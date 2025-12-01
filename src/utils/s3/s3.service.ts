@@ -4,7 +4,6 @@ import {
   PutObjectCommand,
   DeleteObjectCommand,
 } from '@aws-sdk/client-s3';
-import { ConfigService } from '@nestjs/config';
 import { createReadStream, unlinkSync, existsSync } from 'fs';
 import * as path from 'path';
 import { lookup as mimeLookup } from 'mime-types';
@@ -19,11 +18,11 @@ export class S3Service {
   private readonly MAIN_FOLDER = 'fintech';
   private readonly logger = new Logger(S3Service.name);
 
-  constructor(private readonly configService: ConfigService) {
-    this.region = this.configService.get<string>('S3_REGION') ?? '';
-    this.bucket = this.configService.get<string>('S3_BUCKET') ?? '';
-    this.accessKey = this.configService.get<string>('S3_ACCESS_KEY') ?? '';
-    this.secretKey = this.configService.get<string>('S3_SECRET_KEY') ?? '';
+  constructor() {
+    this.region = process.env.S3_REGION ?? '';
+    this.bucket = process.env.S3_BUCKET ?? '';
+    this.accessKey = process.env.S3_ACCESS_KEY ?? '';
+    this.secretKey = process.env.S3_SECRET_KEY ?? '';
 
     this.s3 = new S3Client({
       region: this.region,
