@@ -7,6 +7,7 @@ import { AuthModule } from './auth/auth.module';
 import { UtilsModule } from './utils/utils.module';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
+import { BusinessKycModule } from './business-kyc/business-kyc.module';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { APP_GUARD } from '@nestjs/core';
     }),
     AuthModule,
     UtilsModule,
+    BusinessKycModule,
   ],
   controllers: [AppController],
   providers: [
