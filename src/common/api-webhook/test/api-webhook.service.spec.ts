@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { ApiWebhookService } from './api-webhook.service';
+import { ApiWebhookService } from '../service/api-webhook.service';
 
 describe('ApiWebhookService', () => {
   let service: ApiWebhookService;

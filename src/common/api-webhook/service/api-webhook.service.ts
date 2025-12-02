@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { CreateApiWebhookDto } from './dto/create-api-webhook.dto';
-import { UpdateApiWebhookDto } from './dto/update-api-webhook.dto';
+import { CreateApiWebhookDto } from '../dto/create-api-webhook.dto';
+import { UpdateApiWebhookDto } from '../dto/update-api-webhook.dto';
 
 @Injectable()
 export class ApiWebhookService {
