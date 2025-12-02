@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { RootController } from '../../../auth/controllers/root.controller';
-import { RootService } from './root.service';
+import { RootController } from '../../controllers/root.controller';
+import { RootService } from '../../services/root.service';
 
 describe('RootController', () => {
   let controller: RootController;

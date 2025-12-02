@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { ApiEntityService } from './api-entity.service';
+import { ApiEntityService } from '../service/api-entity.service';
 
 describe('ApiEntityService', () => {
   let service: ApiEntityService;
