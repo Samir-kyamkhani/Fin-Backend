@@ -14,9 +14,12 @@ describe('AppController', () => {
     appController = app.get<AppController>(AppController);
   });
 
-  describe('root', () => {
-    it('should return "Hello World!"', () => {
-      expect(appController.getHello()).toBe('Hello World!');
+  describe('GET /health', () => {
+    it('should return health status object', () => {
+      expect(appController.getHealth()).toEqual({
+        status: 'ok',
+        message: 'Everything is good!',
+      });
     });
   });
 });
