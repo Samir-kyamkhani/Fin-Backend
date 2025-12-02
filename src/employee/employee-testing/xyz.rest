@@ -1,0 +1,12 @@
+GET http://localhost:9000/health
+
+###
+
+POST http://localhost:9000/login
+content-type: application/json
+
+
+{
+    "name": "sample",
+    "time": "Wed, 21 Oct 2015 18:27:50 GMT"
+}
