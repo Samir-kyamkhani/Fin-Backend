@@ -9,12 +9,7 @@ import {
 import { Department } from 'src/common/department/entities/department.entity';
 import { Root } from 'src/root/entities/root.entity';
 import { User } from 'src/user/entities/user.entity';
-
-// Define enums
-export enum CreatedByType {
-  ROOT = 'ROOT',
-  ADMIN = 'ADMIN',
-}
+import { CreatedByType } from '../enums/department-permission.enum';
 
 @Table({
   tableName: 'department_permissions',

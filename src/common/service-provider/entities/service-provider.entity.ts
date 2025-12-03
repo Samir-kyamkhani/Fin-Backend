@@ -14,16 +14,8 @@ import { RolePermission } from 'src/common/role-permission/entities/role-permiss
 import { Transaction } from 'src/common/transaction/entities/transaction.entity';
 import { Root } from 'src/root/entities/root.entity';
 import { User } from 'src/user/entities/user.entity';
-// Define enums
-export enum ServiceStatus {
-  ACTIVE = 'ACTIVE',
-  INACTIVE = 'INACTIVE',
-}
-
-export enum AssignedByType {
-  ROOT = 'ROOT',
-  ADMIN = 'ADMIN',
-}
+import { AssignedByType, ServiceStatus } from '../enums/service-provider.enum';
+import { UserPermission } from 'src/common/user-permission/entities/user-permission.entity';
 
 @Table({
   tableName: 'service_providers',
