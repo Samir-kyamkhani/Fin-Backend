@@ -1,8 +1,12 @@
-export enum EntryType {
+export enum LedgerEntryType {
   DEBIT = 'DEBIT',
   CREDIT = 'CREDIT',
 }
 
+export enum EntryType {
+  DEBIT = 'DEBIT',
+  CREDIT = 'CREDIT',
+}
 export enum ReferenceType {
   TRANSACTION = 'TRANSACTION',
   COMMISSION = 'COMMISSION',

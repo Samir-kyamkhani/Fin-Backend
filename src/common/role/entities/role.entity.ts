@@ -1,109 +1,78 @@
 import {
   Table,
-  Model,
   Column,
+  Model,
   DataType,
   BelongsTo,
   HasMany,
+  Default,
+  BeforeCreate,
+  BeforeUpdate,
 } from 'sequelize-typescript';
-import { User } from 'src/user/entities/user.entity';
-import { Root } from 'src/root/entities/root.entity';
+import { CreatedByType } from '../enums/role.enum';
 import { RolePermission } from 'src/common/role-permission/entities/role-permission.entity';
+import { User } from 'src/user/entities/user.entity';
 import { CommissionSetting } from 'src/common/commission-setting/entities/commission-setting.entity';
+import { Root } from 'src/root/entities/root.entity';
 
-// Define enums
-export enum CreatedByType {
-  ROOT = 'ROOT',
-  ADMIN = 'ADMIN',
-}
-
+// ========== ROLE ==========
 @Table({
   tableName: 'roles',
   timestamps: true,
   underscored: true,
   modelName: 'Role',
   indexes: [
+    { name: 'idx_created_by', fields: ['created_by_id', 'created_by_type'] },
+    { name: 'idx_name_unique', unique: true, fields: ['name'] },
     {
-      fields: ['created_by_id', 'created_by_type'],
-    },
-    {
-      unique: true,
-      fields: ['name'],
-    },
-    {
+      name: 'idx_hierarchy_level_unique',
       unique: true,
       fields: ['hierarchy_level'],
     },
   ],
 })
-export class Role extends Model {
+export class Role extends Model<Role> {
   @Column({
     type: DataType.UUID,
     defaultValue: DataType.UUIDV4,
     primaryKey: true,
   })
   declare id: string;
-
   @Column({
-    type: DataType.STRING,
+    type: DataType.STRING(50),
     unique: true,
     allowNull: false,
-    validate: {
-      notEmpty: true,
-      len: [2, 50],
-    },
+    validate: { notEmpty: true, len: [2, 50] },
   })
   name: string;
-
   @Column({
     type: DataType.INTEGER,
     field: 'hierarchy_level',
     unique: true,
     allowNull: false,
-    validate: {
-      min: 1,
-    },
+    validate: { min: 1 },
   })
   hierarchyLevel: number;
-
   @Column({
     type: DataType.TEXT,
     allowNull: true,
-    validate: {
-      len: [0, 1000],
-    },
+    validate: { len: [0, 1000] },
   })
-  description: string;
-
+  description: string | null;
   @Column({
     type: DataType.ENUM(...Object.values(CreatedByType)),
     field: 'created_by_type',
     allowNull: false,
-    validate: {
-      isIn: [Object.values(CreatedByType)],
-    },
+    validate: { isIn: [Object.values(CreatedByType)] },
   })
   createdByType: CreatedByType;
-
-  @Column({
-    type: DataType.UUID,
-    field: 'created_by_id',
-    allowNull: false,
-  })
+  @Column({ type: DataType.UUID, field: 'created_by_id', allowNull: false })
   createdById: string;
-
-  @Column({
-    type: DataType.DATE,
-    field: 'created_at',
-    defaultValue: DataType.NOW,
-  })
+  @Default(DataType.NOW)
+  @Column({ type: DataType.DATE, field: 'created_at', allowNull: false })
   declare createdAt: Date;
-
-  @Column({
-    type: DataType.DATE,
-    field: 'updated_at',
-    defaultValue: DataType.NOW,
-  })
+  @Default(DataType.NOW)
+  @Column({ type: DataType.DATE, field: 'updated_at', allowNull: false })
   declare updatedAt: Date;
 
   // Associations
@@ -114,7 +83,6 @@ export class Role extends Model {
     onUpdate: 'CASCADE',
   })
   users: User[];
-
   @HasMany(() => RolePermission, {
     foreignKey: 'role_id',
     as: 'rolePermissions',
@@ -122,7 +90,6 @@ export class Role extends Model {
     onUpdate: 'CASCADE',
   })
   rolePermissions: RolePermission[];
-
   @HasMany(() => CommissionSetting, {
     foreignKey: 'role_id',
     as: 'commissionSettings',
@@ -130,35 +97,25 @@ export class Role extends Model {
     onUpdate: 'CASCADE',
   })
   commissionSettings: CommissionSetting[];
-
-  // Polymorphic relations
   @BelongsTo(() => Root, {
     foreignKey: 'created_by_id',
     constraints: false,
     as: 'createdByRoot',
-    scope: {
-      created_by_type: CreatedByType.ROOT,
-    },
+    scope: { created_by_type: CreatedByType.ROOT },
   })
-  createdByRoot: Root;
-
+  createdByRoot: Root | null;
   @BelongsTo(() => User, {
     foreignKey: 'created_by_id',
     constraints: false,
     as: 'createdByUser',
-    scope: {
-      created_by_type: CreatedByType.ADMIN,
-    },
+    scope: { created_by_type: CreatedByType.ADMIN },
   })
-  createdByUser: User;
+  createdByUser: User | null;
 
   // Instance methods
-  getCreator(): Root | User | undefined {
-    if (this.createdByType === CreatedByType.ROOT) {
-      return this.createdByRoot;
-    } else if (this.createdByType === CreatedByType.ADMIN) {
-      return this.createdByUser;
-    }
+  getCreator(): Root | User | null | undefined {
+    if (this.createdByType === CreatedByType.ROOT) return this.createdByRoot;
+    if (this.createdByType === CreatedByType.ADMIN) return this.createdByUser;
     return undefined;
   }
 
@@ -166,8 +123,15 @@ export class Role extends Model {
   static async findByHierarchyLevel(level: number): Promise<Role | null> {
     return this.findOne({ where: { hierarchyLevel: level } });
   }
-
   static async findByName(name: string): Promise<Role | null> {
     return this.findOne({ where: { name } });
+  }
+
+  // Hooks
+  @BeforeCreate
+  @BeforeUpdate
+  static validateHierarchy(instance: Role): void {
+    if (instance.hierarchyLevel < 1)
+      throw new Error('Hierarchy level must be at least 1');
   }
 }

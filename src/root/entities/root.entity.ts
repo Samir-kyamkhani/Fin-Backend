@@ -1,3 +1,4 @@
+// src/modules/roots/entities/root.entity.ts
 import {
   Table,
   Column,
@@ -6,38 +7,26 @@ import {
   ForeignKey,
   BelongsTo,
   HasMany,
-  BeforeCreate,
-  BeforeUpdate,
-  BeforeSave,
   Index,
   Default,
   AllowNull,
   PrimaryKey,
+  BeforeCreate,
+  BeforeUpdate,
   Unique,
-  AfterFind,
+  BeforeSave,
 } from 'sequelize-typescript';
-
-// import bcrypt from 'bcrypt';
-// import crypto from 'crypto';
-// import { Role } from '../../roles/entities/role.entity';
-// import { IpWhitelist } from '../../ip-whitelists/entities/ip-whitelist.entity';
-// import { User } from '../../users/entities/user.entity';
-// import { RootWallet } from './root-wallet.entity';
-// import { RootBankDetail } from './root-bank-detail.entity';
-// import { RootCommissionEarning } from './root-commission-earning.entity';
-// import { Employee } from '../../employees/entities/employee.entity';
-// import { Department } from '../../departments/entities/department.entity';
-// import { SystemSetting } from '../../system-settings/entities/system-setting.entity';
-// import { ServiceProvider } from '../../service-providers/entities/service-provider.entity';
-// import { UserKyc } from '../../kyc/entities/user-kyc.entity';
-// import { BusinessKyc } from '../../kyc/entities/business-kyc.entity';
+import { Role } from 'src/common/role/entities/role.entity';
 import { RootStatus } from '../enums/root.enum';
-
-export interface IRootHierarchy {
-  level: number;
-  path: string;
-  ancestors?: string[];
-}
+import { IRootHierarchy } from '../interface/root.interface';
+import { RootWallet } from 'src/common/root-wallet/entities/root-wallet.entity';
+import { RootBankDetail } from 'src/common/root-bank-detail/entities/root-bank-detail.entity';
+import { RootCommissionEarning } from 'src/common/root-commission-earning/entities/root-commission-earning.entity';
+import { Employee } from 'src/employee/entities/employee.entity';
+import { SystemSetting } from 'src/common/system-setting/entities/system-setting.entity';
+import { ServiceProvider } from 'src/common/service-provider/entities/service-provider.entity';
+import { IpWhitelist } from 'src/common/ip-whitelist/entities/ip-whitelist.entity';
+import { User } from 'src/user/entities/user.entity';
 
 @Table({
   tableName: 'roots',
@@ -45,273 +34,146 @@ export interface IRootHierarchy {
   underscored: true,
   paranoid: true,
   indexes: [
+    { name: 'idx_username_unique', unique: true, fields: ['username'] },
+    { name: 'idx_email_unique', unique: true, fields: ['email'] },
+    { name: 'idx_phone_number_unique', unique: true, fields: ['phone_number'] },
     {
-      unique: true,
-      fields: ['username'],
-    },
-    {
-      unique: true,
-      fields: ['email'],
-    },
-    {
-      unique: true,
-      fields: ['phone_number'],
-    },
-    {
-      unique: true,
+      name: 'idx_hierarchy_level',
       fields: ['hierarchy_level'],
     },
     {
-      unique: true,
+      name: 'idx_hierarchy_path',
       fields: ['hierarchy_path'],
     },
-    {
-      fields: ['status'],
-    },
-    {
-      fields: ['created_at'],
-    },
+    { name: 'idx_status', fields: ['status'] },
+    { name: 'idx_created_at', fields: ['created_at'] },
+    { name: 'idx_role_id', fields: ['role_id'] },
   ],
 })
 export class Root extends Model<Root> {
   @PrimaryKey
   @Default(DataType.UUIDV4)
-  @Column({
-    type: DataType.UUID,
-  })
+  @Column({ type: DataType.UUID, allowNull: false })
   declare id: string;
 
   @ForeignKey(() => Role)
-  @Column({
-    field: 'role_id',
-    type: DataType.UUID,
-  })
-  roleId: string;
+  @Column({ field: 'role_id', type: DataType.UUID })
+  roleId: string | null;
 
   @AllowNull(false)
-  @Unique
-  @Index
+  @Unique('idx_username_unique')
+  @Index('idx_username')
   @Column({
-    type: DataType.STRING,
-    validate: {
-      notEmpty: true,
-      len: [3, 50],
-    },
+    type: DataType.STRING(50),
+    validate: { notEmpty: true, len: [3, 50] },
   })
   username: string;
 
   @AllowNull(false)
   @Column({
     field: 'first_name',
-    type: DataType.STRING,
-    validate: {
-      notEmpty: true,
-      len: [1, 100],
-    },
+    type: DataType.STRING(100),
+    validate: { notEmpty: true, len: [1, 100] },
   })
   firstName: string;
 
   @AllowNull(false)
   @Column({
     field: 'last_name',
-    type: DataType.STRING,
-    validate: {
-      notEmpty: true,
-      len: [1, 100],
-    },
+    type: DataType.STRING(100),
+    validate: { notEmpty: true, len: [1, 100] },
   })
   lastName: string;
 
   @Column({
     field: 'profile_image',
     type: DataType.TEXT,
-    validate: {
-      isUrl: true,
-    },
+    validate: { len: [0, 1000] },
   })
-  profileImage: string;
+  profileImage: string | null;
 
   @AllowNull(false)
-  @Unique
-  @Index
-  @Column({
-    type: DataType.STRING,
-    validate: {
-      isEmail: true,
-    },
-  })
+  @Unique('idx_email_unique')
+  @Index('idx_email')
+  @Column({ type: DataType.STRING(255), validate: { isEmail: true } })
   email: string;
 
   @AllowNull(false)
-  @Unique
-  @Index
+  @Unique('idx_phone_number_unique')
+  @Index('idx_phone_number')
   @Column({
     field: 'phone_number',
-    type: DataType.STRING,
-    validate: {
-      notEmpty: true,
-    },
+    type: DataType.STRING(15),
+    validate: { notEmpty: true, is: /^[0-9]{10,15}$/ },
   })
   phoneNumber: string;
 
   @AllowNull(false)
   @Column({
-    type: DataType.STRING,
-    validate: {
-      len: [6, 255],
+    type: DataType.STRING(255),
+    validate: { len: [6, 255] },
+    set(value: string) {
+      // Password will be hashed in service layer
+      this.setDataValue('password', value);
     },
   })
   password: string;
 
+  @Column({
+    field: 'password_salt',
+    type: DataType.STRING(64),
+    allowNull: true,
+  })
+  passwordSalt: string | null;
+
   @Default(RootStatus.ACTIVE)
   @Column({
     type: DataType.ENUM(...Object.values(RootStatus)),
-    validate: {
-      isIn: [Object.values(RootStatus)],
-    },
+    validate: { isIn: [Object.values(RootStatus)] },
   })
   status: RootStatus;
 
-  @Column({
-    field: 'refresh_token',
-    type: DataType.TEXT,
-  })
-  refreshToken: string;
+  @Column({ field: 'refresh_token', type: DataType.TEXT })
+  refreshToken: string | null;
 
-  @Column({
-    field: 'password_reset_token',
-    type: DataType.STRING,
-  })
-  passwordResetToken: string;
+  @Column({ field: 'password_reset_token', type: DataType.STRING(64) })
+  passwordResetToken: string | null;
 
-  @Column({
-    field: 'password_reset_expires',
-    type: DataType.DATE,
-  })
-  passwordResetExpires: Date;
+  @Column({ field: 'password_reset_expires', type: DataType.DATE })
+  passwordResetExpires: Date | null;
 
-  @Column({
-    field: 'last_login_at',
-    type: DataType.DATE,
-  })
-  lastLoginAt: Date;
+  @Column({ field: 'last_login_at', type: DataType.DATE })
+  lastLoginAt: Date | null;
 
   @Default(0)
-  @Unique
-  @Index
   @Column({
     field: 'hierarchy_level',
     type: DataType.INTEGER,
-    validate: {
-      min: 0,
-    },
+    validate: { min: 0 },
   })
   hierarchyLevel: number;
 
   @Default('0')
-  @Unique
-  @Index
   @Column({
     field: 'hierarchy_path',
     type: DataType.TEXT,
-    validate: {
-      notEmpty: true,
-    },
+    validate: { notEmpty: true },
   })
   hierarchyPath: string;
 
-  @Default(Date.now)
-  @Column({
-    field: 'created_at',
-    type: DataType.DATE,
-  })
+  @Default(DataType.NOW)
+  @Column({ field: 'created_at', type: DataType.DATE, allowNull: false })
   declare createdAt: Date;
 
-  @Default(Date.now)
-  @Column({
-    field: 'updated_at',
-    type: DataType.DATE,
-  })
+  @Default(DataType.NOW)
+  @Column({ field: 'updated_at', type: DataType.DATE, allowNull: false })
   declare updatedAt: Date;
 
-  @Column({
-    field: 'deleted_at',
-    type: DataType.DATE,
-  })
-  declare deletedAt: Date;
+  @Column({ field: 'deleted_at', type: DataType.DATE })
+  declare deletedAt: Date | null;
 
-  // Associations
-  @BelongsTo(() => Role)
-  role: Role;
-
-  @HasMany(() => IpWhitelist, {
-    foreignKey: 'created_by_id',
-    constraints: false,
-  })
-  createdIpWhitelists: IpWhitelist[];
-
-  @HasMany(() => IpWhitelist, {
-    foreignKey: 'user_id',
-    constraints: false,
-    scope: {
-      user_type: 'ROOT',
-    },
-  })
-  ipWhitelists: IpWhitelist[];
-
-  @HasMany(() => User, {
-    foreignKey: 'created_by_id',
-    constraints: false,
-  })
-  createdUsers: User[];
-
-  @HasMany(() => RootWallet, {
-    foreignKey: 'root_id',
-  })
-  wallets: RootWallet[];
-
-  @HasMany(() => RootBankDetail, {
-    foreignKey: 'root_id',
-  })
-  bankAccounts: RootBankDetail[];
-
-  @HasMany(() => RootCommissionEarning, {
-    foreignKey: 'root_id',
-  })
-  commissionEarnings: RootCommissionEarning[];
-
-  @HasMany(() => Employee, {
-    foreignKey: 'root_id',
-  })
-  employees: Employee[];
-
-  @HasMany(() => Department, {
-    foreignKey: 'created_by_id',
-    constraints: false,
-  })
-  departments: Department[];
-
-  @HasMany(() => SystemSetting, {
-    foreignKey: 'root_id',
-  })
-  systemSettings: SystemSetting[];
-
-  @HasMany(() => ServiceProvider, {
-    foreignKey: 'created_by_root_id',
-  })
-  serviceProviders: ServiceProvider[];
-
-  @HasMany(() => UserKyc, {
-    foreignKey: 'verified_by_id',
-    constraints: false,
-  })
-  verifiedUserKycs: UserKyc[];
-
-  @HasMany(() => BusinessKyc, {
-    foreignKey: 'verified_by_id',
-    constraints: false,
-  })
-  verifiedBusinessKycs: BusinessKyc[];
+  @Column({ field: 'deactivation_reason', type: DataType.TEXT })
+  deactivationReason: string | null;
 
   // Virtual properties
   get fullName(): string {
@@ -338,41 +200,72 @@ export class Root extends Model<Root> {
     };
   }
 
-  // Instance methods
-  async validatePassword(password: string): Promise<boolean> {
-    return bcrypt.compare(password, this.password);
+  get maskedPhone(): string {
+    return this.phoneNumber ? `******${this.phoneNumber.slice(-4)}` : '****';
   }
 
-  async generatePasswordResetToken(): Promise<string> {
-    const resetToken = crypto.randomBytes(32).toString('hex');
-    this.passwordResetToken = crypto
-      .createHash('sha256')
-      .update(resetToken)
-      .digest('hex');
-    this.passwordResetExpires = new Date(Date.now() + 30 * 60 * 1000); // 30 minutes
-    await this.save();
-    return resetToken;
+  get maskedEmail(): string {
+    if (!this.email) return '***@***';
+    const [localPart, domain] = this.email.split('@');
+    return localPart.length > 2
+      ? `${localPart.substring(0, 2)}***@${domain}`
+      : `***@${domain}`;
   }
 
-  async updateLastLogin(): Promise<void> {
-    this.lastLoginAt = new Date();
-    await this.save();
-  }
+  // Associations
+  @BelongsTo(() => Role, { foreignKey: 'roleId', as: 'role' })
+  role: Role | null;
+
+  @HasMany(() => RootWallet, { foreignKey: 'root_id', as: 'wallets' })
+  wallets: RootWallet[];
+
+  @HasMany(() => RootBankDetail, { foreignKey: 'root_id', as: 'bankAccounts' })
+  bankAccounts: RootBankDetail[];
+
+  @HasMany(() => RootCommissionEarning, {
+    foreignKey: 'root_id',
+    as: 'commissionEarnings',
+  })
+  commissionEarnings: RootCommissionEarning[];
+
+  @HasMany(() => Employee, { foreignKey: 'root_id', as: 'employees' })
+  employees: Employee[];
+
+  @HasMany(() => SystemSetting, { foreignKey: 'root_id', as: 'systemSettings' })
+  systemSettings: SystemSetting[];
+
+  @HasMany(() => ServiceProvider, {
+    foreignKey: 'created_by_root_id',
+    as: 'serviceProviders',
+  })
+  serviceProviders: ServiceProvider[];
+
+  @HasMany(() => IpWhitelist, {
+    foreignKey: 'created_by_id',
+    constraints: false,
+    as: 'createdIpWhitelists',
+  })
+  createdIpWhitelists: IpWhitelist[];
+
+  @HasMany(() => IpWhitelist, {
+    foreignKey: 'user_id',
+    constraints: false,
+    as: 'ipWhitelists',
+    scope: { user_type: 'ROOT' },
+  })
+  ipWhitelists: IpWhitelist[];
+
+  @HasMany(() => User, {
+    foreignKey: 'created_by_id',
+    constraints: false,
+    as: 'createdUsers',
+  })
+  createdUsers: User[];
 
   // Hooks
   @BeforeCreate
-  @BeforeUpdate
-  static async hashPassword(instance: Root) {
-    if (instance.changed('password')) {
-      const salt = await bcrypt.genSalt(10);
-      instance.password = await bcrypt.hash(instance.password, salt);
-    }
-  }
-
-  @BeforeCreate
-  static async setDefaultHierarchy(instance: Root) {
-    if (!instance.hierarchyLevel) {
-      // Find the max hierarchy level and assign next level
+  static async setDefaultHierarchy(instance: Root): Promise<void> {
+    if (!instance.hierarchyLevel && !instance.hierarchyPath) {
       const maxLevelRoot = await Root.findOne({
         order: [['hierarchy_level', 'DESC']],
         attributes: ['hierarchy_level', 'hierarchy_path'],
@@ -380,7 +273,7 @@ export class Root extends Model<Root> {
 
       if (maxLevelRoot) {
         instance.hierarchyLevel = maxLevelRoot.hierarchyLevel + 1;
-        instance.hierarchyPath = `${maxLevelRoot.hierarchyPath}.${instance.hierarchyLevel}`;
+        instance.hierarchyPath = `${maxLevelRoot.hierarchyPath}/${instance.hierarchyLevel}`;
       } else {
         instance.hierarchyLevel = 0;
         instance.hierarchyPath = '0';
@@ -389,21 +282,16 @@ export class Root extends Model<Root> {
   }
 
   @BeforeSave
-  static async validateUniqueFields(instance: Root) {
+  static async validateUniqueFields(instance: Root): Promise<void> {
     if (
       instance.changed('username') ||
       instance.changed('email') ||
-      instance.changed('phone_number')
+      instance.changed('phoneNumber')
     ) {
-      const where: any = {};
-
-      if (instance.changed('username')) {
-        where.username = instance.username;
-      }
-      if (instance.changed('email')) {
-        where.email = instance.email;
-      }
-      if (instance.changed('phone_number')) {
+      const where: Record<string, unknown> = {};
+      if (instance.changed('username')) where.username = instance.username;
+      if (instance.changed('email')) where.email = instance.email;
+      if (instance.changed('phoneNumber')) {
         where.phoneNumber = instance.phoneNumber;
       }
 
@@ -414,18 +302,17 @@ export class Root extends Model<Root> {
     }
   }
 
-  @AfterFind
-  static removeSensitiveData(instances: Root | Root[]) {
-    if (Array.isArray(instances)) {
-      instances.forEach((instance) => {
-        delete instance.password;
-        delete instance.refreshToken;
-        delete instance.passwordResetToken;
-      });
-    } else if (instances) {
-      delete instances.password;
-      delete instances.refreshToken;
-      delete instances.passwordResetToken;
-    }
+  @BeforeUpdate
+  static updateTimestamp(instance: Root): void {
+    instance.updatedAt = new Date();
+  }
+
+  toJSON(): Record<string, unknown> {
+    const values = super.toJSON() as unknown as Record<string, unknown>;
+    delete values.password;
+    delete values.passwordSalt;
+    delete values.refreshToken;
+    delete values.passwordResetToken;
+    return values;
   }
 }

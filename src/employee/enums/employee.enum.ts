@@ -5,7 +5,7 @@ export enum EmployeeStatus {
   DELETED = 'DELETED',
 }
 
-export enum CreatorType {
+export enum CreatedByType {
   ROOT = 'ROOT',
   ADMIN = 'ADMIN',
 }

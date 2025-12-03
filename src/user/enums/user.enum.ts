@@ -6,6 +6,7 @@ export enum UserStatus {
 }
 
 export enum CreatorType {
-  USER = 'USER',
   ROOT = 'ROOT',
+  ADMIN = 'ADMIN',
+  USER = 'USER',
 }

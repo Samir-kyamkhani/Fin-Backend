@@ -4,39 +4,19 @@ import {
   Model,
   DataType,
   ForeignKey,
-  BelongsTo,
-  HasMany,
-  HasOne,
-  BeforeCreate,
-  BeforeUpdate,
-  BeforeSave,
-  AfterFind,
   Index,
   Default,
   AllowNull,
   PrimaryKey,
+  BeforeCreate,
+  BeforeUpdate,
   Unique,
+  BeforeSave,
+  BelongsTo,
+  HasMany,
 } from 'sequelize-typescript';
-// import * as bcrypt from 'bcrypt';
-// import * as crypto from 'crypto';
-// import { Root } from '../../roots/entities/root.entity';
-// import { Role } from '../../roles/entities/role.entity';
-// import { Wallet } from '../../wallets/entities/wallet.entity';
-// import { BankDetail } from '../../bank-details/entities/bank-detail.entity';
-// import { UserKyc } from '../../kyc/entities/user-kyc.entity';
-// import { BusinessKyc } from '../../kyc/entities/business-kyc.entity';
-// import { Transaction } from '../../transactions/entities/transaction.entity';
-// import { CommissionEarning } from '../../commission-earnings/entities/commission-earning.entity';
-// import { RootCommissionEarning } from '../../roots/entities/root-commission-earning.entity';
-// import { UserPermission } from '../../permissions/entities/user-permission.entity';
-// import { PiiConsent } from '../../pii-consents/entities/pii-consent.entity';
-// import { ApiEntity } from '../../api-entities/entities/api-entity.entity';
-// import { IpWhitelist } from '../../ip-whitelists/entities/ip-whitelist.entity';
-// import { ServiceProvider } from '../../service-providers/entities/service-provider.entity';
-// import { Employee } from '../../employees/entities/employee.entity';
-// import { CommissionSetting } from '../../commission-settings/entities/commission-setting.entity';
-// import { Department } from '../../departments/entities/department.entity';
-import { UserStatus, CreatorType } from '../enums/user.enum';
+import { CreatorType, UserStatus } from '../enums/user.enum';
+import { Role } from 'src/common/role/entities/role.entity';
 
 @Table({
   tableName: 'users',
@@ -44,167 +24,130 @@ import { UserStatus, CreatorType } from '../enums/user.enum';
   underscored: true,
   paranoid: true,
   indexes: [
-    {
-      fields: ['parent_id'],
-    },
-    {
-      unique: true,
-      fields: ['customer_id'],
-    },
-    {
-      fields: ['hierarchy_level'],
-    },
-    {
-      fields: ['hierarchy_path'],
-    },
-    {
-      unique: true,
-      fields: ['phone_number'],
-    },
-    {
-      fields: ['role_id'],
-    },
-    {
-      unique: true,
-      fields: ['username'],
-    },
-    {
-      unique: true,
-      fields: ['email'],
-    },
-    {
-      fields: ['status'],
-    },
-    {
-      fields: ['created_at'],
-    },
-    {
-      fields: ['created_by_id'],
-    },
-    {
-      fields: ['created_by_type'],
-    },
+    { name: 'idx_parent_id', fields: ['parent_id'] },
+    { name: 'idx_customer_id_unique', unique: true, fields: ['customer_id'] },
+    { name: 'idx_hierarchy_level', fields: ['hierarchy_level'] },
+    { name: 'idx_hierarchy_path', fields: ['hierarchy_path'] },
+    { name: 'idx_phone_number_unique', unique: true, fields: ['phone_number'] },
+    { name: 'idx_role_id', fields: ['role_id'] },
+    { name: 'idx_username_unique', unique: true, fields: ['username'] },
+    { name: 'idx_email_unique', unique: true, fields: ['email'] },
+    { name: 'idx_status', fields: ['status'] },
+    { name: 'idx_created_at', fields: ['created_at'] },
+    { name: 'idx_created_by', fields: ['created_by_id', 'created_by_type'] },
   ],
 })
 export class User extends Model<User> {
   @PrimaryKey
   @Default(DataType.UUIDV4)
-  @Column({
-    type: DataType.UUID,
-  })
+  @Column({ type: DataType.UUID, allowNull: false })
   declare id: string;
 
   @AllowNull(false)
-  @Unique
-  @Index
+  @Unique('idx_customer_id_unique')
+  @Index('idx_customer_id')
   @Column({
     field: 'customer_id',
     type: DataType.STRING(8),
-    validate: {
-      len: [8, 8],
-    },
+    validate: { len: [8, 8] },
   })
   customerId: string;
 
   @AllowNull(false)
-  @Unique
-  @Index
+  @Unique('idx_username_unique')
+  @Index('idx_username')
   @Column({
-    type: DataType.STRING,
-    validate: {
-      notEmpty: true,
-      len: [3, 50],
-    },
+    type: DataType.STRING(50),
+    validate: { notEmpty: true, len: [3, 50] },
   })
   username: string;
 
   @AllowNull(false)
   @Column({
     field: 'first_name',
-    type: DataType.STRING,
-    validate: {
-      notEmpty: true,
-      len: [1, 100],
-    },
+    type: DataType.STRING(100),
+    validate: { notEmpty: true, len: [1, 100] },
   })
   firstName: string;
 
   @AllowNull(false)
   @Column({
     field: 'last_name',
-    type: DataType.STRING,
-    validate: {
-      notEmpty: true,
-      len: [1, 100],
-    },
+    type: DataType.STRING(100),
+    validate: { notEmpty: true, len: [1, 100] },
   })
   lastName: string;
 
   @Column({
     field: 'profile_image',
     type: DataType.TEXT,
-    validate: {
-      isUrl: true,
-    },
+    validate: { len: [0, 1000] },
   })
-  profileImage: string;
+  profileImage: string | null;
 
   @AllowNull(false)
-  @Unique
-  @Index
-  @Column({
-    type: DataType.STRING,
-    validate: {
-      isEmail: true,
-    },
-  })
+  @Unique('idx_email_unique')
+  @Index('idx_email')
+  @Column({ type: DataType.STRING(255), validate: { isEmail: true } })
   email: string;
 
   @AllowNull(false)
-  @Unique
-  @Index
+  @Unique('idx_phone_number_unique')
+  @Index('idx_phone_number')
   @Column({
     field: 'phone_number',
-    type: DataType.STRING,
-    validate: {
-      notEmpty: true,
-    },
+    type: DataType.STRING(15),
+    validate: { notEmpty: true, is: /^[0-9]{10,15}$/ },
   })
   phoneNumber: string;
 
   @AllowNull(false)
   @Column({
-    type: DataType.STRING,
-    validate: {
-      len: [6, 255],
+    type: DataType.STRING(255),
+    validate: { len: [6, 255] },
+    set(value: string) {
+      // Password will be hashed in service layer
+      this.setDataValue('password', value);
     },
   })
   password: string;
 
   @Column({
+    field: 'password_salt',
+    type: DataType.STRING(64),
+    allowNull: true,
+  })
+  passwordSalt: string | null;
+
+  @Column({
     field: 'transaction_pin',
-    type: DataType.STRING,
-    validate: {
-      len: [4, 6],
+    type: DataType.STRING(128),
+    allowNull: true,
+    validate: { len: [0, 128] },
+    set(value: string | null) {
+      // Transaction pin will be hashed in service layer
+      this.setDataValue('transactionPin', value);
     },
   })
-  transactionPin: string;
+  transactionPin: string | null;
+
+  @Column({
+    field: 'transaction_pin_salt',
+    type: DataType.STRING(64),
+    allowNull: true,
+  })
+  transactionPinSalt: string | null;
 
   @ForeignKey(() => User)
-  @Column({
-    field: 'parent_id',
-    type: DataType.UUID,
-  })
-  parentId: string;
+  @Column({ field: 'parent_id', type: DataType.UUID })
+  parentId: string | null;
 
   @AllowNull(false)
-  @Index
+  @Index('idx_hierarchy_level')
   @Column({
     field: 'hierarchy_level',
     type: DataType.INTEGER,
-    validate: {
-      min: 0,
-    },
+    validate: { min: 0 },
   })
   hierarchyLevel: number;
 
@@ -212,260 +155,82 @@ export class User extends Model<User> {
   @Column({
     field: 'hierarchy_path',
     type: DataType.TEXT,
-    validate: {
-      notEmpty: true,
-    },
+    validate: { notEmpty: true },
   })
   hierarchyPath: string;
 
   @Default(UserStatus.ACTIVE)
   @Column({
     type: DataType.ENUM(...Object.values(UserStatus)),
-    validate: {
-      isIn: [Object.values(UserStatus)],
-    },
+    validate: { isIn: [Object.values(UserStatus)] },
   })
   status: UserStatus;
 
   @Default(false)
-  @Column({
-    field: 'is_kyc_verified',
-    type: DataType.BOOLEAN,
-  })
+  @Column({ field: 'is_kyc_verified', type: DataType.BOOLEAN })
   isKycVerified: boolean;
 
   @ForeignKey(() => Role)
   @AllowNull(false)
-  @Index
-  @Column({
-    field: 'role_id',
-    type: DataType.UUID,
-  })
+  @Index('idx_role_id')
+  @Column({ field: 'role_id', type: DataType.UUID })
   roleId: string;
 
-  @Column({
-    field: 'refresh_token',
-    type: DataType.TEXT,
-  })
-  refreshToken: string;
+  @Column({ field: 'refresh_token', type: DataType.TEXT })
+  refreshToken: string | null;
 
-  @Column({
-    field: 'password_reset_token',
-    type: DataType.STRING,
-  })
-  passwordResetToken: string;
+  @Column({ field: 'password_reset_token', type: DataType.STRING(64) })
+  passwordResetToken: string | null;
 
-  @Column({
-    field: 'password_reset_expires',
-    type: DataType.DATE,
-  })
-  passwordResetExpires: Date;
+  @Column({ field: 'password_reset_expires', type: DataType.DATE })
+  passwordResetExpires: Date | null;
 
-  @Column({
-    field: 'email_verification_token',
-    type: DataType.STRING,
-  })
-  emailVerificationToken: string;
+  @Column({ field: 'email_verification_token', type: DataType.STRING(64) })
+  emailVerificationToken: string | null;
 
-  @Column({
-    field: 'email_verified_at',
-    type: DataType.DATE,
-  })
-  emailVerifiedAt: Date;
+  @Column({ field: 'email_verified_at', type: DataType.DATE })
+  emailVerifiedAt: Date | null;
 
-  @Column({
-    field: 'email_verification_token_expires',
-    type: DataType.DATE,
-  })
-  emailVerificationTokenExpires: Date;
+  @Column({ field: 'email_verification_token_expires', type: DataType.DATE })
+  emailVerificationTokenExpires: Date | null;
 
-  @Column({
-    field: 'last_login_at',
-    type: DataType.DATE,
-  })
-  lastLoginAt: Date;
+  @Column({ field: 'last_login_at', type: DataType.DATE })
+  lastLoginAt: Date | null;
 
-  @Default(Date.now)
-  @Column({
-    field: 'created_at',
-    type: DataType.DATE,
-  })
+  @Default(DataType.NOW)
+  @Column({ field: 'created_at', type: DataType.DATE, allowNull: false })
   declare createdAt: Date;
 
-  @Default(Date.now)
-  @Column({
-    field: 'updated_at',
-    type: DataType.DATE,
-  })
+  @Default(DataType.NOW)
+  @Column({ field: 'updated_at', type: DataType.DATE, allowNull: false })
   declare updatedAt: Date;
 
-  @Column({
-    field: 'deleted_at',
-    type: DataType.DATE,
-  })
-  declare deletedAt: Date;
+  @Column({ field: 'deleted_at', type: DataType.DATE })
+  declare deletedAt: Date | null;
 
-  @Column({
-    field: 'deactivation_reason',
-    type: DataType.TEXT,
-  })
-  deactivationReason: string;
+  @Column({ field: 'deactivation_reason', type: DataType.TEXT })
+  deactivationReason: string | null;
 
-  @Column({
-    field: 'created_by_id',
-    type: DataType.UUID,
-  })
+  @Column({ field: 'created_by_id', type: DataType.UUID })
   createdById: string;
 
   @Default(CreatorType.USER)
   @Column({
     field: 'created_by_type',
     type: DataType.ENUM(...Object.values(CreatorType)),
+    validate: { isIn: [Object.values(CreatorType)] },
   })
   createdByType: CreatorType;
 
   // Associations
-
-  @BelongsTo(() => Root, {
-    foreignKey: 'created_by_id',
-    constraints: false,
-  })
-  creatorRoot: Root;
-
-  @BelongsTo(() => User, {
-    foreignKey: 'created_by_id',
-    constraints: false,
-    scope: {
-      created_by_type: CreatorType.USER,
-    },
-  })
-  creatorUser: User;
-
-  // Hierarchical self-reference
-  @BelongsTo(() => User, {
-    foreignKey: 'parent_id',
-  })
-  parent: User;
-
-  @HasMany(() => User, {
-    foreignKey: 'parent_id',
-  })
-  children: User[];
-
-  // Business relations
-  @BelongsTo(() => Role)
+  @BelongsTo(() => Role, { foreignKey: 'role_id', as: 'role' })
   role: Role;
 
-  @HasMany(() => Wallet)
-  wallets: Wallet[];
+  @BelongsTo(() => User, { foreignKey: 'parent_id', as: 'parent' })
+  parent: User | null;
 
-  @HasMany(() => BankDetail)
-  bankAccounts: BankDetail[];
-
-  // KYC Relations
-  @HasOne(() => UserKyc)
-  userKyc: UserKyc;
-
-  @HasOne(() => BusinessKyc)
-  businessKyc: BusinessKyc;
-
-  @HasMany(() => UserKyc, {
-    foreignKey: 'verified_by_id',
-    constraints: false,
-    scope: {
-      verified_by_type: 'USER',
-    },
-  })
-  verifiedUserKycs: UserKyc[];
-
-  // Transaction relations
-  @HasMany(() => Transaction)
-  transactions: Transaction[];
-
-  @HasMany(() => CommissionEarning, {
-    foreignKey: 'user_id',
-  })
-  commissionEarnings: CommissionEarning[];
-
-  @HasMany(() => CommissionEarning, {
-    foreignKey: 'from_user_id',
-  })
-  commissionsGiven: CommissionEarning[];
-
-  @HasMany(() => RootCommissionEarning, {
-    foreignKey: 'from_user_id',
-  })
-  rootCommissionsGiven: RootCommissionEarning[];
-
-  // Permission relations
-  @HasMany(() => UserPermission)
-  userPermissions: UserPermission[];
-
-  @HasMany(() => PiiConsent)
-  piiConsents: PiiConsent[];
-
-  @HasMany(() => ApiEntity)
-  apiEntities: ApiEntity[];
-
-  @HasMany(() => IpWhitelist, {
-    foreignKey: 'user_id',
-    constraints: false,
-    scope: {
-      user_type: 'USER',
-    },
-  })
-  ipWhitelists: IpWhitelist[];
-
-  // Service Provider relations
-  @HasMany(() => ServiceProvider)
-  serviceProviders: ServiceProvider[];
-
-  // Management relations
-  @HasMany(() => Employee, {
-    foreignKey: 'created_by_id',
-    constraints: false,
-    scope: {
-      created_by_type: CreatorType.USER,
-    },
-  })
-  employeesCreated: Employee[];
-
-  @HasMany(() => CommissionSetting, {
-    foreignKey: 'created_by_id',
-    constraints: false,
-    scope: {
-      created_by_type: CreatorType.USER,
-    },
-  })
-  commissionSettingsCreated: CommissionSetting[];
-
-  @HasMany(() => Role, {
-    foreignKey: 'created_by_id',
-    constraints: false,
-    scope: {
-      created_by_type: CreatorType.USER,
-    },
-  })
-  rolesCreated: Role[];
-
-  @HasMany(() => CommissionSetting, {
-    foreignKey: 'target_user_id',
-  })
-  commissionSettings: CommissionSetting[];
-
-  @HasMany(() => Department, {
-    foreignKey: 'created_by_id',
-    constraints: false,
-    scope: {
-      created_by_type: CreatorType.USER,
-    },
-  })
-  departments: Department[];
-
-  @HasMany(() => Employee, {
-    foreignKey: 'user_id',
-  })
-  employees: Employee[];
+  @HasMany(() => User, { foreignKey: 'parent_id', as: 'children' })
+  children: User[];
 
   // Virtual properties
   get fullName(): string {
@@ -488,65 +253,24 @@ export class User extends Model<User> {
     return !!this.emailVerifiedAt;
   }
 
-  get creator(): Root | User {
-    return this.createdByType === CreatorType.ROOT
-      ? this.creatorRoot
-      : this.creatorUser;
+  get maskedPhone(): string {
+    return this.phoneNumber ? `******${this.phoneNumber.slice(-4)}` : '****';
   }
 
-  // Instance methods
-  async validatePassword(password: string): Promise<boolean> {
-    return bcrypt.compare(password, this.password);
+  get maskedEmail(): string {
+    if (!this.email) return '***@***';
+    const [localPart, domain] = this.email.split('@');
+    return localPart.length > 2
+      ? `${localPart.substring(0, 2)}***@${domain}`
+      : `***@${domain}`;
   }
 
-  async validateTransactionPin(pin: string): Promise<boolean> {
-    if (!this.transactionPin) return false;
-    return bcrypt.compare(pin, this.transactionPin);
-  }
-
-  async setTransactionPin(pin: string): Promise<void> {
-    const salt = await bcrypt.genSalt(10);
-    this.transactionPin = await bcrypt.hash(pin, salt);
-    await this.save();
-  }
-
-  async generatePasswordResetToken(): Promise<string> {
-    const resetToken = crypto.randomBytes(32).toString('hex');
-    this.passwordResetToken = crypto
-      .createHash('sha256')
-      .update(resetToken)
-      .digest('hex');
-    this.passwordResetExpires = new Date(Date.now() + 30 * 60 * 1000); // 30 minutes
-    await this.save();
-    return resetToken;
-  }
-
-  async generateEmailVerificationToken(): Promise<string> {
-    const verificationToken = crypto.randomBytes(32).toString('hex');
-    this.emailVerificationToken = crypto
-      .createHash('sha256')
-      .update(verificationToken)
-      .digest('hex');
-    this.emailVerificationTokenExpires = new Date(
-      Date.now() + 24 * 60 * 60 * 1000,
-    ); // 24 hours
-    await this.save();
-    return verificationToken;
-  }
-
-  async verifyEmail(): Promise<void> {
-    this.emailVerifiedAt = new Date();
-    this.emailVerificationToken = null;
-    this.emailVerificationTokenExpires = null;
-    await this.save();
-  }
-
-  async updateLastLogin(): Promise<void> {
-    this.lastLoginAt = new Date();
-    await this.save();
-  }
-
-  async getHierarchyInfo() {
+  get hierarchy(): {
+    level: number;
+    path: string;
+    ancestors: string[];
+    isTopLevel: boolean;
+  } {
     return {
       level: this.hierarchyLevel,
       path: this.hierarchyPath,
@@ -555,86 +279,56 @@ export class User extends Model<User> {
     };
   }
 
-  async getDownlineUsers(): Promise<User[]> {
-    return User.findAll({
-      where: {
-        hierarchyPath: {
-          [this.sequelize.Op.startsWith]: `${this.hierarchyPath}.`,
-        },
-      },
-    });
-  }
-
   // Hooks
   @BeforeCreate
-  static async generateCustomerId(instance: User) {
+  static async generateCustomerId(instance: User): Promise<void> {
     if (!instance.customerId) {
-      // Generate unique 8-digit customer ID
       let customerId: string;
       let isUnique = false;
+      let attempts = 0;
+      const maxAttempts = 10;
 
-      while (!isUnique) {
+      while (!isUnique && attempts < maxAttempts) {
         customerId = String(Math.floor(10000000 + Math.random() * 90000000));
         const existing = await User.findOne({ where: { customerId } });
         isUnique = !existing;
+        attempts++;
       }
 
-      instance.customerId = customerId;
+      if (!isUnique) {
+        throw new Error('Failed to generate unique customer ID');
+      }
+      instance.customerId = customerId!;
     }
   }
 
   @BeforeCreate
-  static async setHierarchy(instance: User) {
+  static async setHierarchy(instance: User): Promise<void> {
     if (instance.parentId) {
       const parent = await User.findByPk(instance.parentId);
       if (parent) {
         instance.hierarchyLevel = parent.hierarchyLevel + 1;
         instance.hierarchyPath = `${parent.hierarchyPath}.${instance.id}`;
+      } else {
+        throw new Error('Parent user not found');
       }
     } else {
-      // Top-level user
       instance.hierarchyLevel = 0;
       instance.hierarchyPath = instance.id;
     }
   }
 
-  @BeforeCreate
-  @BeforeUpdate
-  static async hashPassword(instance: User) {
-    if (instance.changed('password')) {
-      const salt = await bcrypt.genSalt(10);
-      instance.password = await bcrypt.hash(instance.password, salt);
-    }
-  }
-
-  @BeforeCreate
-  @BeforeUpdate
-  static async hashTransactionPin(instance: User) {
-    if (instance.changed('transactionPin') && instance.transactionPin) {
-      const salt = await bcrypt.genSalt(10);
-      instance.transactionPin = await bcrypt.hash(
-        instance.transactionPin,
-        salt,
-      );
-    }
-  }
-
   @BeforeSave
-  static async validateUniqueFields(instance: User) {
+  static async validateUniqueFields(instance: User): Promise<void> {
     if (
       instance.changed('username') ||
       instance.changed('email') ||
-      instance.changed('phone_number')
+      instance.changed('phoneNumber')
     ) {
-      const where: any = {};
-
-      if (instance.changed('username')) {
-        where.username = instance.username;
-      }
-      if (instance.changed('email')) {
-        where.email = instance.email;
-      }
-      if (instance.changed('phone_number')) {
+      const where: Record<string, unknown> = {};
+      if (instance.changed('username')) where.username = instance.username;
+      if (instance.changed('email')) where.email = instance.email;
+      if (instance.changed('phoneNumber')) {
         where.phoneNumber = instance.phoneNumber;
       }
 
@@ -645,22 +339,20 @@ export class User extends Model<User> {
     }
   }
 
-  @AfterFind
-  static removeSensitiveData(instances: User | User[]) {
-    if (Array.isArray(instances)) {
-      instances.forEach((instance) => {
-        delete instance.password;
-        delete instance.transactionPin;
-        delete instance.refreshToken;
-        delete instance.passwordResetToken;
-        delete instance.emailVerificationToken;
-      });
-    } else if (instances) {
-      delete instances.password;
-      delete instances.transactionPin;
-      delete instances.refreshToken;
-      delete instances.passwordResetToken;
-      delete instances.emailVerificationToken;
-    }
+  @BeforeUpdate
+  static updateTimestamp(instance: User): void {
+    instance.updatedAt = new Date();
+  }
+
+  toJSON(): Record<string, unknown> {
+    const values = super.toJSON() as unknown as Record<string, unknown>;
+    delete values.password;
+    delete values.passwordSalt;
+    delete values.transactionPin;
+    delete values.transactionPinSalt;
+    delete values.refreshToken;
+    delete values.passwordResetToken;
+    delete values.emailVerificationToken;
+    return values;
   }
 }

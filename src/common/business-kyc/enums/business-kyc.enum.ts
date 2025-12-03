@@ -1,19 +1,18 @@
 export enum BusinessType {
-  PROPRIETORSHIP = 'proprietorship',
-  PARTNERSHIP = 'partnership',
-  PRIVATE_LIMITED = 'private_limited',
-  PUBLIC_LIMITED = 'public_limited',
-  LLP = 'llp',
-  OPC = 'opc',
-  NGO = 'ngo',
-  TRUST = 'trust',
+  PROPRIETORSHIP = 'PROPRIETORSHIP',
+  PARTNERSHIP = 'PARTNERSHIP',
+  PRIVATE_LIMITED = 'PRIVATE_LIMITED',
+  PUBLIC_LIMITED = 'PUBLIC_LIMITED',
+  LLP = 'LLP',
+  TRUST = 'TRUST',
+  SOCIETY = 'SOCIETY',
 }
 
 export enum KycStatus {
   DRAFT = 'draft',
   PENDING = 'pending',
   UNDER_REVIEW = 'under_review',
-  APPROVED = 'approved',
+  VERIFIED = 'verified',
   REJECTED = 'rejected',
   SUSPENDED = 'suspended',
 }
