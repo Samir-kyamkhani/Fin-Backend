@@ -5,20 +5,19 @@ import {
   DataType,
   ForeignKey,
   BelongsTo,
-  BeforeCreate,
-  BeforeUpdate,
-  BeforeSave,
-  AfterCreate,
   Index,
   Default,
   AllowNull,
   PrimaryKey,
+  BeforeCreate,
+  BeforeUpdate,
   Unique,
+  BeforeSave,
+  AfterCreate,
 } from 'sequelize-typescript';
-import { Op } from 'sequelize';
-
-import { User } from 'src/user/entities/user.entity';
 import { BankAccountType, BankDetailStatus } from '../enums/bank-detail.enum';
+import { User } from 'src/user/entities/user.entity';
+import { Op } from 'sequelize';
 
 @Table({
   tableName: 'bank_details',
@@ -26,173 +25,114 @@ import { BankAccountType, BankDetailStatus } from '../enums/bank-detail.enum';
   underscored: true,
   paranoid: true,
   indexes: [
+    { name: 'idx_user_id', fields: ['user_id'] },
+    { name: 'idx_status', fields: ['status'] },
+    { name: 'idx_is_primary', fields: ['is_primary'] },
+    { name: 'idx_created_at', fields: ['created_at'] },
     {
-      fields: ['user_id'],
+      name: 'idx_account_number_unique',
+      unique: true,
+      fields: ['account_number'],
     },
-    {
-      fields: ['status'],
-    },
-    {
-      fields: ['is_primary'],
-    },
-    {
-      fields: ['created_at'],
-    },
+    { name: 'idx_user_is_primary', fields: ['user_id', 'is_primary'] },
   ],
 })
 export class BankDetail extends Model<BankDetail> {
   @PrimaryKey
   @Default(DataType.UUIDV4)
-  @Column({
-    type: DataType.UUID,
-  })
+  @Column({ type: DataType.UUID, allowNull: false })
   declare id: string;
-
   @AllowNull(false)
   @Column({
     field: 'account_holder',
-    type: DataType.TEXT,
-    validate: {
-      notEmpty: true,
-      len: [2, 100],
-    },
+    type: DataType.STRING(100),
+    validate: { notEmpty: true, len: [2, 100], is: /^[a-zA-Z\s.'-]+$/i },
   })
   accountHolder: string;
-
   @AllowNull(false)
-  @Unique
+  @Unique('account_number_unique')
   @Column({
     field: 'account_number',
     type: DataType.STRING(18),
-    validate: {
-      notEmpty: true,
-      len: [9, 18],
-      isNumeric: true,
-    },
+    validate: { notEmpty: true, len: [9, 18], isNumeric: true },
   })
   accountNumber: string;
-
   @AllowNull(false)
   @Column({
     field: 'phone_number',
-    type: DataType.STRING,
-    validate: {
-      notEmpty: true,
-      is: /^[6-9]\d{9}$/, // Indian mobile number validation
-    },
+    type: DataType.STRING(15),
+    validate: { notEmpty: true, is: /^[6-9]\d{9}$/ },
   })
   phoneNumber: string;
-
   @AllowNull(false)
   @Column({
     field: 'account_type',
     type: DataType.ENUM(...Object.values(BankAccountType)),
+    validate: { isIn: [Object.values(BankAccountType)] },
   })
   accountType: BankAccountType;
-
   @AllowNull(false)
   @Column({
     field: 'ifsc_code',
-    type: DataType.TEXT,
-    validate: {
-      notEmpty: true,
-      len: [11, 11],
-      is: /^[A-Z]{4}0[A-Z0-9]{6}$/, // IFSC code validation
-    },
+    type: DataType.STRING(11),
+    validate: { notEmpty: true, len: [11, 11], is: /^[A-Z]{4}0[A-Z0-9]{6}$/ },
   })
   ifscCode: string;
-
   @AllowNull(false)
   @Column({
     field: 'bank_name',
-    type: DataType.TEXT,
-    validate: {
-      notEmpty: true,
-      len: [2, 100],
-    },
+    type: DataType.STRING(100),
+    validate: { notEmpty: true, len: [2, 100] },
   })
   bankName: string;
-
-  @Column({
-    field: 'bank_rejection_reason',
-    type: DataType.TEXT,
-  })
-  bankRejectionReason: string;
-
+  @Column({ field: 'bank_rejection_reason', type: DataType.TEXT })
+  bankRejectionReason: string | null;
   @AllowNull(false)
   @Column({
     field: 'bank_proof_file',
-    type: DataType.STRING,
-    validate: {
-      notEmpty: true,
-    },
+    type: DataType.STRING(500),
+    validate: { notEmpty: true, len: [1, 500] },
   })
   bankProofFile: string;
-
   @Default(BankDetailStatus.PENDING)
   @Column({
     type: DataType.ENUM(...Object.values(BankDetailStatus)),
+    validate: { isIn: [Object.values(BankDetailStatus)] },
   })
   status: BankDetailStatus;
-
   @Default(false)
-  @Index
-  @Column({
-    field: 'is_primary',
-    type: DataType.BOOLEAN,
-  })
+  @Index('idx_is_primary')
+  @Column({ field: 'is_primary', type: DataType.BOOLEAN })
   isPrimary: boolean;
-
   @ForeignKey(() => User)
   @AllowNull(false)
-  @Index
-  @Column({
-    field: 'user_id',
-    type: DataType.UUID,
-  })
+  @Index('idx_user_id')
+  @Column({ field: 'user_id', type: DataType.UUID })
   userId: string;
-
-  @Default(Date.now)
-  @Column({
-    field: 'created_at',
-    type: DataType.DATE,
-  })
+  @Default(DataType.NOW)
+  @Column({ field: 'created_at', type: DataType.DATE, allowNull: false })
   declare createdAt: Date;
-
-  @Default(Date.now)
-  @Column({
-    field: 'updated_at',
-    type: DataType.DATE,
-  })
+  @Default(DataType.NOW)
+  @Column({ field: 'updated_at', type: DataType.DATE, allowNull: false })
   declare updatedAt: Date;
-
-  @Column({
-    field: 'deleted_at',
-    type: DataType.DATE,
-  })
-  declare deletedAt: Date;
+  @Column({ field: 'deleted_at', type: DataType.DATE })
+  declare deletedAt: Date | null;
 
   // Virtual properties
   get maskedAccountNumber(): string {
-    if (!this.accountNumber || this.accountNumber.length < 4) {
-      return '****';
-    }
+    if (!this.accountNumber || this.accountNumber.length < 4) return '****';
     const last4 = this.accountNumber.slice(-4);
     return `****${last4}`;
   }
-
   get isVerified(): boolean {
     return this.status === BankDetailStatus.VERIFIED;
   }
-
   get isRejected(): boolean {
     return this.status === BankDetailStatus.REJECTED;
   }
-
   get isPending(): boolean {
     return this.status === BankDetailStatus.PENDING;
   }
-
   get bankInfo(): {
     name: string;
     ifsc: string;
@@ -208,42 +148,27 @@ export class BankDetail extends Model<BankDetail> {
   }
 
   // Associations
-  @BelongsTo(() => User)
-  user: User;
+  @BelongsTo(() => User, { foreignKey: 'userId', as: 'user' }) user: User;
 
   // Instance methods
   async markAsPrimary(): Promise<void> {
-    // First, unset primary for all other bank accounts of this user
     await BankDetail.update(
       { isPrimary: false },
-      {
-        where: {
-          userId: this.userId,
-          id: { [Op.ne]: this.id },
-        },
-      },
+      { where: { userId: this.userId, id: { [Op.ne]: this.id } } },
     );
-
-    // Set this as primary
     this.isPrimary = true;
     await this.save();
   }
 
-  async verify(rejectionReason: string): Promise<void> {
-    if (this.status === BankDetailStatus.VERIFIED) {
-      throw new Error('Bank detail already verified');
-    }
-
+  async verify(): Promise<void> {
+    if (this.isVerified) throw new Error('Bank detail already verified');
     this.status = BankDetailStatus.VERIFIED;
-    this.bankRejectionReason = rejectionReason;
+    this.bankRejectionReason = null;
     await this.save();
   }
 
   async reject(reason: string): Promise<void> {
-    if (this.status === BankDetailStatus.REJECTED) {
-      throw new Error('Bank detail already rejected');
-    }
-
+    if (this.isRejected) throw new Error('Bank detail already rejected');
     this.status = BankDetailStatus.REJECTED;
     this.bankRejectionReason = reason;
     await this.save();
@@ -252,48 +177,31 @@ export class BankDetail extends Model<BankDetail> {
   // Hooks
   @BeforeCreate
   @BeforeUpdate
-  static validateBankDetails(instance: BankDetail) {
-    // Clean and validate account number
-    if (instance.accountNumber) {
-      instance.accountNumber = instance.accountNumber.replace(/\s/g, ''); // Remove spaces
-    }
-
-    // Clean and validate IFSC code
-    if (instance.ifscCode) {
+  static validateAndCleanBankDetails(instance: BankDetail): void {
+    if (instance.accountNumber)
+      instance.accountNumber = instance.accountNumber.replace(/\s/g, '');
+    if (instance.ifscCode)
       instance.ifscCode = instance.ifscCode.toUpperCase().trim();
-    }
-
-    // Clean and validate bank name
-    if (instance.bankName) {
-      instance.bankName = instance.bankName.trim();
-    }
-
-    // Clean and validate account holder name
-    if (instance.accountHolder) {
+    if (instance.bankName) instance.bankName = instance.bankName.trim();
+    if (instance.accountHolder)
       instance.accountHolder = instance.accountHolder.trim();
-    }
-
-    // Clean and validate phone number
-    if (instance.phoneNumber) {
+    if (instance.phoneNumber)
       instance.phoneNumber = instance.phoneNumber.replace(/\s/g, '');
-    }
   }
 
   @BeforeCreate
-  static async validateUniqueAccountNumber(instance: BankDetail) {
+  static async validateUniqueAccountNumber(
+    instance: BankDetail,
+  ): Promise<void> {
     const existing = await BankDetail.findOne({
       where: { accountNumber: instance.accountNumber },
     });
-
-    if (existing) {
-      throw new Error('Account number already exists');
-    }
+    if (existing) throw new Error('Account number already exists');
   }
 
   @BeforeSave
-  static async validatePrimaryAccount(instance: BankDetail) {
+  static async validatePrimaryAccount(instance: BankDetail): Promise<void> {
     if (instance.isPrimary && instance.changed('isPrimary')) {
-      // Check if user has any other primary account
       const existingPrimary = await BankDetail.findOne({
         where: {
           userId: instance.userId,
@@ -301,58 +209,40 @@ export class BankDetail extends Model<BankDetail> {
           id: { [Op.ne]: instance.id },
         },
       });
-
-      if (existingPrimary) {
-        // Automatically demote the existing primary account
-        await existingPrimary.update({ isPrimary: false });
-      }
+      if (existingPrimary) await existingPrimary.update({ isPrimary: false });
     }
   }
 
   @AfterCreate
-  static async setAsPrimaryIfFirst(instance: BankDetail) {
-    // If this is the first bank account for the user, set it as primary
+  static async setAsPrimaryIfFirst(instance: BankDetail): Promise<void> {
     const count = await BankDetail.count({
       where: { userId: instance.userId },
     });
-
-    if (count === 1) {
-      await instance.markAsPrimary();
-    }
+    if (count === 1) await instance.markAsPrimary();
   }
 
   @BeforeSave
-  static validateStatusChanges(instance: BankDetail) {
+  static validateStatusChanges(instance: BankDetail): void {
     if (instance.changed('status')) {
       const previousStatus = instance.previous(
         'status',
       ) as BankDetailStatus | null;
-
-      // Only allow status changes from PENDING to VERIFIED or REJECTED
-      if (previousStatus === BankDetailStatus.VERIFIED) {
+      if (previousStatus === BankDetailStatus.VERIFIED)
         throw new Error('Cannot change status of verified bank account');
-      }
-
-      if (previousStatus === BankDetailStatus.REJECTED) {
+      if (previousStatus === BankDetailStatus.REJECTED)
         throw new Error('Cannot change status of rejected bank account');
-      }
-
-      // If marking as verified, ensure all required fields are present
-      if (instance.status === BankDetailStatus.VERIFIED) {
-        if (!instance.bankProofFile) {
-          throw new Error('Bank proof file is required for verification');
-        }
-      }
-
-      // If marking as rejected, ensure rejection reason is provided
+      if (
+        instance.status === BankDetailStatus.VERIFIED &&
+        !instance.bankProofFile
+      )
+        throw new Error('Bank proof file is required for verification');
       if (
         instance.status === BankDetailStatus.REJECTED &&
         !instance.bankRejectionReason
-      ) {
+      )
         throw new Error(
           'Rejection reason is required when rejecting bank account',
         );
-      }
     }
   }
 }

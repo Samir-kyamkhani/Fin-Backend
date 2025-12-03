@@ -1,15 +1,14 @@
-export interface IRootBankMetadata {
-  remarks?: string;
+interface JSONMetadata {
+  [key: string]: unknown;
+}
+
+export interface RootBankMetadata extends JSONMetadata {
   verifiedBy?: string;
-  rejectedBy?: string;
   verifiedById?: string;
-  rejectedById?: string;
   verifiedAt?: Date;
-  rejectedAt?: Date;
   verificationReason?: string;
+  rejectedBy?: string;
+  rejectedById?: string;
+  rejectedAt?: Date;
   rejectionReason?: string;
-  documentType?: string;
-  documentNumber?: string;
-  branchName?: string;
-  branchAddress?: string;
 }

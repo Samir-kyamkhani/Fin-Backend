@@ -1,18 +1,15 @@
+// Common Enums
 export enum EntityStatus {
-  ACTIVE = 'ACTIVE',
-  INACTIVE = 'INACTIVE',
   PENDING = 'PENDING',
+  VERIFIED = 'VERIFIED',
   REJECTED = 'REJECTED',
   SUSPENDED = 'SUSPENDED',
 }
 
 export enum ProviderType {
-  BULKPE = 'BULKPE',
-  PAYTM = 'PAYTM',
   RAZORPAY = 'RAZORPAY',
-  CCAVENUE = 'CCAVENUE',
-  BILLDESK = 'BILLDESK',
-  AIRTEL = 'AIRTEL',
-  JIO = 'JIO',
-  OTHER = 'OTHER',
+  STRIPE = 'STRIPE',
+  PAYPAL = 'PAYPAL',
+  CASHFREE = 'CASHFREE',
+  PAYTM = 'PAYTM',
 }

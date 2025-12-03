@@ -1,9 +1,17 @@
-export interface ICommissionMetadata {
+export interface JSONMetadata {
+  [key: string]: unknown;
+}
+
+export interface CommissionMetadata extends JSONMetadata {
+  calculatedAt: Date;
   commissionRate?: number;
-  commissionLevel?: number;
-  hierarchyPath?: string;
-  serviceType?: string;
-  provider?: string;
-  notes?: string;
-  calculatedAt?: Date;
+  transactionDetails?: Record<string, unknown>;
+  breakdown?: {
+    baseAmount: number;
+    commission: number;
+    deductions: {
+      tds: number;
+      gst: number;
+    };
+  };
 }

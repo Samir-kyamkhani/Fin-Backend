@@ -1,6 +1,7 @@
 export enum BankAccountType {
-  PERSONAL = 'PERSONAL',
-  BUSINESS = 'BUSINESS',
+  SAVINGS = 'SAVINGS',
+  CURRENT = 'CURRENT',
+  SALARY = 'SALARY',
 }
 
 export enum BankDetailStatus {

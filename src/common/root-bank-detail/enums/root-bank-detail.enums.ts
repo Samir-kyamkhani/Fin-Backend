@@ -1,6 +1,7 @@
 export enum RootBankAccountType {
-  PERSONAL = 'PERSONAL',
-  BUSINESS = 'BUSINESS',
+  SAVINGS = 'SAVINGS',
+  CURRENT = 'CURRENT',
+  SALARY = 'SALARY',
 }
 
 export enum RootBankDetailStatus {

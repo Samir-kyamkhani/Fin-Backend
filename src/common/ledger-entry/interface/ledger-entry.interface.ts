@@ -1,32 +1,17 @@
-export interface ILedgerMetadata {
-  remarks?: string;
-  serviceName?: string;
-  provider?: string;
-  originalAmount?: number;
-  taxDetails?: {
-    gst?: number;
-    tds?: number;
-    serviceTax?: number;
-  };
-  commissionDetails?: {
-    rate?: number;
-    amount?: number;
-    level?: number;
-  };
-  paymentDetails?: {
-    method?: string;
-    gateway?: string;
-    reference?: string;
-  };
-  userDetails?: {
-    userId?: string;
-    username?: string;
-    email?: string;
-  };
-  auditInfo?: {
-    performedByType?: string;
-    performedById?: string;
-    action?: string;
-    performedAt: Date;
-  };
+interface JSONMetadata {
+  [key: string]: unknown;
+}
+
+interface AuditInfo {
+  performedAt: Date;
+  performedBy?: string;
+  performedById?: string;
+  ipAddress?: string;
+  userAgent?: string;
+}
+
+export interface LedgerMetadata extends JSONMetadata {
+  auditInfo: AuditInfo;
+  transactionDetails?: Record<string, unknown>;
+  referenceDetails?: Record<string, unknown>;
 }

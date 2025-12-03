@@ -7,6 +7,12 @@ export enum TransactionStatus {
   CANCELLED = 'CANCELLED',
 }
 
+export enum Currency {
+  INR = 'INR',
+  USD = 'USD',
+  EUR = 'EUR',
+}
+
 export enum PaymentType {
   COLLECTION = 'COLLECTION',
   PAYOUT = 'PAYOUT',
@@ -19,8 +25,4 @@ export enum PaymentType {
   CHARGE = 'CHARGE',
   FUND_REQ_BANK = 'FUND_REQ_BANK',
   FUND_REQ_RAZORPAY = 'FUND_REQ_RAZORPAY',
-}
-
-export enum Currency {
-  INR = 'INR',
 }

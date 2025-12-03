@@ -5,23 +5,22 @@ import {
   DataType,
   ForeignKey,
   BelongsTo,
-  BeforeCreate,
-  BeforeUpdate,
-  BeforeSave,
-  AfterCreate,
   Index,
   Default,
   AllowNull,
   PrimaryKey,
+  BeforeCreate,
+  BeforeUpdate,
   Unique,
+  BeforeSave,
+  AfterCreate,
 } from 'sequelize-typescript';
-
-import { Root } from 'src/root/entities/root.entity';
-import type { IRootBankMetadata } from '../interface/root-bank-detail.interface';
 import {
   RootBankAccountType,
   RootBankDetailStatus,
 } from '../enums/root-bank-detail.enums';
+import { Root } from 'src/root/entities/root.entity';
+import type { RootBankMetadata } from '../interface/root-bank-detail.interface';
 import { Op } from 'sequelize';
 
 @Table({
@@ -29,177 +28,113 @@ import { Op } from 'sequelize';
   timestamps: true,
   underscored: true,
   indexes: [
+    { name: 'idx_root_id', fields: ['root_id'] },
+    { name: 'idx_status', fields: ['status'] },
+    { name: 'idx_is_primary', fields: ['is_primary'] },
+    { name: 'idx_created_at', fields: ['created_at'] },
     {
-      fields: ['root_id'],
-    },
-    {
-      fields: ['status'],
-    },
-    {
-      fields: ['is_primary'],
-    },
-    {
-      fields: ['created_at'],
-    },
-    {
+      name: 'idx_account_number_unique',
       unique: true,
       fields: ['account_number'],
     },
+    { name: 'idx_root_is_primary', fields: ['root_id', 'is_primary'] },
   ],
 })
 export class RootBankDetail extends Model<RootBankDetail> {
   @PrimaryKey
   @Default(DataType.UUIDV4)
-  @Column({
-    type: DataType.UUID,
-  })
+  @Column({ type: DataType.UUID, allowNull: false })
   declare id: string;
-
   @AllowNull(false)
   @Column({
     field: 'account_holder',
-    type: DataType.TEXT,
-    validate: {
-      notEmpty: true,
-      len: [2, 100],
-    },
+    type: DataType.STRING(100),
+    validate: { notEmpty: true, len: [2, 100], is: /^[a-zA-Z\s.'-]+$/i },
   })
   accountHolder: string;
-
   @AllowNull(false)
-  @Unique
+  @Unique('idx_account_number_unique')
   @Column({
     field: 'account_number',
     type: DataType.STRING(18),
-    validate: {
-      notEmpty: true,
-      len: [9, 18],
-      isNumeric: true,
-    },
+    validate: { notEmpty: true, len: [9, 18], isNumeric: true },
   })
   accountNumber: string;
-
   @AllowNull(false)
   @Column({
     field: 'phone_number',
-    type: DataType.STRING,
-    validate: {
-      notEmpty: true,
-      is: /^[6-9]\d{9}$/,
-    },
+    type: DataType.STRING(15),
+    validate: { notEmpty: true, is: /^[6-9]\d{9}$/ },
   })
   phoneNumber: string;
-
   @AllowNull(false)
   @Column({
     field: 'account_type',
     type: DataType.ENUM(...Object.values(RootBankAccountType)),
+    validate: { isIn: [Object.values(RootBankAccountType)] },
   })
   accountType: RootBankAccountType;
-
   @AllowNull(false)
   @Column({
     field: 'ifsc_code',
-    type: DataType.TEXT,
-    validate: {
-      notEmpty: true,
-      len: [11, 11],
-      is: /^[A-Z]{4}0[A-Z0-9]{6}$/,
-    },
+    type: DataType.STRING(11),
+    validate: { notEmpty: true, len: [11, 11], is: /^[A-Z]{4}0[A-Z0-9]{6}$/ },
   })
   ifscCode: string;
-
   @AllowNull(false)
   @Column({
     field: 'bank_name',
-    type: DataType.TEXT,
-    validate: {
-      notEmpty: true,
-      len: [2, 100],
-    },
+    type: DataType.STRING(100),
+    validate: { notEmpty: true, len: [2, 100] },
   })
   bankName: string;
-
-  @AllowNull(true)
-  @Column({
-    field: 'bank_rejection_reason',
-    type: DataType.TEXT,
-  })
+  @Column({ field: 'bank_rejection_reason', type: DataType.TEXT })
   bankRejectionReason: string | null;
-
   @AllowNull(false)
   @Column({
     field: 'bank_proof_file',
-    type: DataType.STRING,
-    validate: {
-      notEmpty: true,
-    },
+    type: DataType.STRING(500),
+    validate: { notEmpty: true, len: [1, 500] },
   })
   bankProofFile: string;
-
   @Default(RootBankDetailStatus.PENDING)
   @Column({
     type: DataType.ENUM(...Object.values(RootBankDetailStatus)),
+    validate: { isIn: [Object.values(RootBankDetailStatus)] },
   })
   status: RootBankDetailStatus;
-
   @Default(false)
-  @Index
-  @Column({
-    field: 'is_primary',
-    type: DataType.BOOLEAN,
-  })
+  @Index('idx_is_primary')
+  @Column({ field: 'is_primary', type: DataType.BOOLEAN })
   isPrimary: boolean;
-
   @ForeignKey(() => Root)
   @AllowNull(false)
-  @Index
-  @Column({
-    field: 'root_id',
-    type: DataType.UUID,
-  })
+  @Index('idx_root_id')
+  @Column({ field: 'root_id', type: DataType.UUID })
   rootId: string;
-
-  @Default(Date.now)
-  @Column({
-    field: 'created_at',
-    type: DataType.DATE,
-  })
+  @Default(DataType.NOW)
+  @Column({ field: 'created_at', type: DataType.DATE, allowNull: false })
   declare createdAt: Date;
-
-  @Default(Date.now)
-  @Column({
-    field: 'updated_at',
-    type: DataType.DATE,
-  })
+  @Default(DataType.NOW)
+  @Column({ field: 'updated_at', type: DataType.DATE, allowNull: false })
   declare updatedAt: Date;
-
-  @Column({
-    type: DataType.JSON,
-  })
-  metadata: IRootBankMetadata;
+  @Column({ type: DataType.JSON, defaultValue: {} }) metadata: RootBankMetadata;
 
   // Virtual properties
   get maskedAccountNumber(): string {
-    if (!this.accountNumber || this.accountNumber.length < 4) {
-      return '****';
-    }
-    const last4 = this.accountNumber.slice(-4);
-    return `****${last4}`;
+    return !this.accountNumber || this.accountNumber.length < 4
+      ? '****'
+      : `****${this.accountNumber.slice(-4)}`;
   }
-
   get isVerified(): boolean {
     return this.status === RootBankDetailStatus.VERIFIED;
   }
-
   get isRejected(): boolean {
     return this.status === RootBankDetailStatus.REJECTED;
   }
-
   get isPending(): boolean {
     return this.status === RootBankDetailStatus.PENDING;
   }
-
   get bankInfo(): {
     name: string;
     ifsc: string;
@@ -217,23 +152,14 @@ export class RootBankDetail extends Model<RootBankDetail> {
   }
 
   // Associations
-  @BelongsTo(() => Root)
-  root: Root;
+  @BelongsTo(() => Root, { foreignKey: 'rootId', as: 'root' }) root: Root;
 
   // Instance methods
   async markAsPrimary(): Promise<void> {
-    // First, unset primary for all other bank accounts of this root
     await RootBankDetail.update(
       { isPrimary: false },
-      {
-        where: {
-          rootId: this.rootId,
-          id: { [Op.ne]: this.id },
-        },
-      },
+      { where: { rootId: this.rootId, id: { [Op.ne]: this.id } } },
     );
-
-    // Set this as primary
     this.isPrimary = true;
     await this.save();
   }
@@ -243,14 +169,9 @@ export class RootBankDetail extends Model<RootBankDetail> {
     verifiedById?: string,
     notes?: string,
   ): Promise<void> {
-    if (this.isVerified) {
-      throw new Error('Bank detail already verified');
-    }
-
+    if (this.isVerified) throw new Error('Bank detail already verified');
     this.status = RootBankDetailStatus.VERIFIED;
     this.bankRejectionReason = null;
-
-    // Update metadata
     this.metadata = {
       ...this.metadata,
       verifiedBy,
@@ -258,7 +179,6 @@ export class RootBankDetail extends Model<RootBankDetail> {
       verifiedAt: new Date(),
       verificationReason: notes,
     };
-
     await this.save();
   }
 
@@ -267,14 +187,9 @@ export class RootBankDetail extends Model<RootBankDetail> {
     rejectedBy?: string,
     rejectedById?: string,
   ): Promise<void> {
-    if (this.isRejected) {
-      throw new Error('Bank detail already rejected');
-    }
-
+    if (this.isRejected) throw new Error('Bank detail already rejected');
     this.status = RootBankDetailStatus.REJECTED;
     this.bankRejectionReason = reason;
-
-    // Update metadata
     this.metadata = {
       ...this.metadata,
       rejectedBy,
@@ -282,55 +197,37 @@ export class RootBankDetail extends Model<RootBankDetail> {
       rejectedAt: new Date(),
       rejectionReason: reason,
     };
-
     await this.save();
   }
 
   // Hooks
   @BeforeCreate
   @BeforeUpdate
-  static validateBankDetails(instance: RootBankDetail) {
-    // Clean and validate account number
-    if (instance.accountNumber) {
+  static validateAndCleanBankDetails(instance: RootBankDetail): void {
+    if (instance.accountNumber)
       instance.accountNumber = instance.accountNumber.replace(/\s/g, '');
-    }
-
-    // Clean and validate IFSC code
-    if (instance.ifscCode) {
+    if (instance.ifscCode)
       instance.ifscCode = instance.ifscCode.toUpperCase().trim();
-    }
-
-    // Clean and validate bank name
-    if (instance.bankName) {
-      instance.bankName = instance.bankName.trim();
-    }
-
-    // Clean and validate account holder name
-    if (instance.accountHolder) {
+    if (instance.bankName) instance.bankName = instance.bankName.trim();
+    if (instance.accountHolder)
       instance.accountHolder = instance.accountHolder.trim();
-    }
-
-    // Clean and validate phone number
-    if (instance.phoneNumber) {
+    if (instance.phoneNumber)
       instance.phoneNumber = instance.phoneNumber.replace(/\s/g, '');
-    }
   }
 
   @BeforeCreate
-  static async validateUniqueAccountNumber(instance: RootBankDetail) {
+  static async validateUniqueAccountNumber(
+    instance: RootBankDetail,
+  ): Promise<void> {
     const existing = await RootBankDetail.findOne({
       where: { accountNumber: instance.accountNumber },
     });
-
-    if (existing) {
-      throw new Error('Account number already exists');
-    }
+    if (existing) throw new Error('Account number already exists');
   }
 
   @BeforeSave
-  static async validatePrimaryAccount(instance: RootBankDetail) {
+  static async validatePrimaryAccount(instance: RootBankDetail): Promise<void> {
     if (instance.isPrimary && instance.changed('isPrimary')) {
-      // Check if root has any other primary account
       const existingPrimary = await RootBankDetail.findOne({
         where: {
           rootId: instance.rootId,
@@ -338,72 +235,48 @@ export class RootBankDetail extends Model<RootBankDetail> {
           id: { [Op.ne]: instance.id },
         },
       });
-
-      if (existingPrimary) {
-        // Automatically demote the existing primary account
-        await existingPrimary.update({ isPrimary: false });
-      }
+      if (existingPrimary) await existingPrimary.update({ isPrimary: false });
     }
   }
 
   @AfterCreate
-  static async setAsPrimaryIfFirst(instance: RootBankDetail) {
-    // If this is the first bank account for the root, set it as primary
+  static async setAsPrimaryIfFirst(instance: RootBankDetail): Promise<void> {
     const count = await RootBankDetail.count({
       where: { rootId: instance.rootId },
     });
-
-    if (count === 1) {
-      await instance.markAsPrimary();
-    }
+    if (count === 1) await instance.markAsPrimary();
   }
 
   @BeforeSave
-  static validateStatusChanges(instance: RootBankDetail) {
+  static validateStatusChanges(instance: RootBankDetail): void {
     if (instance.changed('status')) {
       const previousStatus = instance.previous(
         'status',
       ) as RootBankDetailStatus | null;
-
-      // Only allow status changes from PENDING to VERIFIED or REJECTED
-      if (previousStatus === RootBankDetailStatus.VERIFIED) {
+      if (previousStatus === RootBankDetailStatus.VERIFIED)
         throw new Error('Cannot change status of verified bank account');
-      }
-
-      if (previousStatus === RootBankDetailStatus.REJECTED) {
+      if (previousStatus === RootBankDetailStatus.REJECTED)
         throw new Error('Cannot change status of rejected bank account');
-      }
-
-      // If marking as verified, ensure all required fields are present
-      if (instance.status === RootBankDetailStatus.VERIFIED) {
-        if (!instance.bankProofFile) {
-          throw new Error('Bank proof file is required for verification');
-        }
-      }
-
-      // If marking as rejected, ensure rejection reason is provided
+      if (
+        instance.status === RootBankDetailStatus.VERIFIED &&
+        !instance.bankProofFile
+      )
+        throw new Error('Bank proof file is required for verification');
       if (
         instance.status === RootBankDetailStatus.REJECTED &&
         !instance.bankRejectionReason
-      ) {
+      )
         throw new Error(
           'Rejection reason is required when rejecting bank account',
         );
-      }
     }
   }
 
   @BeforeSave
-  static async validateRoot(instance: RootBankDetail) {
-    // Verify root exists
+  static async validateRoot(instance: RootBankDetail): Promise<void> {
     const root = await Root.findByPk(instance.rootId);
-    if (!root) {
-      throw new Error(`Root with ID ${instance.rootId} not found`);
-    }
-
-    // Only active roots can have bank accounts
-    if (!root.isActive) {
+    if (!root) throw new Error(`Root with ID ${instance.rootId} not found`);
+    if (!root.isActive)
       throw new Error('Cannot add bank account for inactive root');
-    }
   }
 }
