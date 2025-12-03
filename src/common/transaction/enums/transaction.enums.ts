@@ -1,0 +1,26 @@
+export enum TransactionStatus {
+  PENDING = 'PENDING',
+  SUCCESS = 'SUCCESS',
+  FAILED = 'FAILED',
+  REVERSED = 'REVERSED',
+  REFUNDED = 'REFUNDED',
+  CANCELLED = 'CANCELLED',
+}
+
+export enum PaymentType {
+  COLLECTION = 'COLLECTION',
+  PAYOUT = 'PAYOUT',
+  REFUND = 'REFUND',
+  REVERSAL = 'REVERSAL',
+  COMMISSION = 'COMMISSION',
+  FEE = 'FEE',
+  TAX = 'TAX',
+  ADJUSTMENT = 'ADJUSTMENT',
+  CHARGE = 'CHARGE',
+  FUND_REQ_BANK = 'FUND_REQ_BANK',
+  FUND_REQ_RAZORPAY = 'FUND_REQ_RAZORPAY',
+}
+
+export enum Currency {
+  INR = 'INR',
+}

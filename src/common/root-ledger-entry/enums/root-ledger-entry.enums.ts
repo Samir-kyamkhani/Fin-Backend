@@ -1,0 +1,17 @@
+export enum EntryType {
+  DEBIT = 'DEBIT',
+  CREDIT = 'CREDIT',
+}
+
+export enum ReferenceType {
+  TRANSACTION = 'TRANSACTION',
+  COMMISSION = 'COMMISSION',
+  REFUND = 'REFUND',
+  ADJUSTMENT = 'ADJUSTMENT',
+  BONUS = 'BONUS',
+  CHARGE = 'CHARGE',
+  FEE = 'FEE',
+  TAX = 'TAX',
+  PAYOUT = 'PAYOUT',
+  COLLECTION = 'COLLECTION',
+}

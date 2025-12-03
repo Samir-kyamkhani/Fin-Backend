@@ -14,12 +14,10 @@ import {
 } from 'sequelize-typescript';
 
 import { EntityStatus, ProviderType } from '../enums/api-entity.enum';
-
-// import { User } from '../../users/entities/user.entity';
-// import { ServiceProvider } from '../../service-providers/entities/service-provider.entity';
-// import { ApiWebhook } from '../../api-webhooks/entities/api-webhook.entity';
-// import { Transaction } from '../../transactions/entities/transaction.entity';
-// import { EntityStatus, ProviderType } from '../enums/api-entity.enum';
+import { User } from 'src/user/entities/user.entity';
+import { ApiWebhook } from 'src/common/api-webhook/entities/api-webhook.entity';
+import { ServiceProvider } from 'src/common/service-provider/entities/service-provider.entity';
+import { Transaction } from 'src/common/transaction/entities/transaction.entity';
 
 @Table({
   tableName: 'api_entities',
@@ -118,14 +116,13 @@ export class ApiEntity extends Model<ApiEntity> {
   })
   verificationData: Record<string, any>;
 
-  @Default(Date.now)
   @Column({
     field: 'created_at',
     type: DataType.DATE,
+    defaultValue: DataType.NOW,
   })
   declare createdAt: Date;
 
-  @Default(Date.now)
   @Column({
     field: 'updated_at',
     type: DataType.DATE,

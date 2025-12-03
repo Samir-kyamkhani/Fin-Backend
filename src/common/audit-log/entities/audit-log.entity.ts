@@ -3,7 +3,7 @@ import {
   Column,
   Model,
   DataType,
-  //   ForeignKey,
+  ForeignKey,
   BelongsTo,
   Index,
   Default,
@@ -11,16 +11,14 @@ import {
   PrimaryKey,
 } from 'sequelize-typescript';
 
-// import { Root } from '../../roots/entities/root.entity';
-// import { User } from '../../users/entities/user.entity';
-// import { Employee } from '../../employees/entities/employee.entity';
-
 import {
   PerformerType,
   TargetUserType,
   AuditStatus,
-  //   AuditAction,
 } from '../enums/audit-log.enum';
+import { Root } from 'src/root/entities/root.entity';
+import { User } from 'src/user/entities/user.entity';
+import { Employee } from 'src/employee/entities/employee.entity';
 
 @Table({
   tableName: 'audit_logs',
@@ -34,13 +32,13 @@ import {
       fields: ['performed_by_type', 'performed_by_id'],
     },
     {
-      fields: ['action', 'created_at'],
+      fields: ['action', 'performed_at'],
     },
     {
       fields: ['target_user_type', 'target_user_id'],
     },
     {
-      fields: ['created_at'],
+      fields: ['performed_at'],
     },
     {
       fields: ['request_id'],
@@ -83,6 +81,7 @@ export class AuditLog extends Model<AuditLog> {
   })
   performedByType: PerformerType;
 
+  @ForeignKey(() => Root)
   @Index
   @Column({
     field: 'performed_by_id',
@@ -96,6 +95,7 @@ export class AuditLog extends Model<AuditLog> {
   })
   targetUserType: TargetUserType;
 
+  @ForeignKey(() => User)
   @Index
   @Column({
     field: 'target_user_id',
@@ -159,10 +159,10 @@ export class AuditLog extends Model<AuditLog> {
 
   @Default(Date.now)
   @Column({
-    field: 'created_at',
+    field: 'performed_at',
     type: DataType.DATE,
   })
-  declare createdAt: Date;
+  declare performedAt: Date;
 
   @Default(Date.now)
   @Column({
@@ -209,26 +209,39 @@ export class AuditLog extends Model<AuditLog> {
   })
   targetEmployee?: Employee;
 
-  // Virtual fields
-  get performerName(): string {
-    if (this.performedByType === PerformerType.SYSTEM) {
-      return 'System';
-    }
-
+  get performerName() {
     const performer =
       this.performedByRoot || this.performedByUser || this.performedByEmployee;
-    return performer
-      ? performer['name'] || performer['email'] || performer['username']
-      : 'Unknown';
+
+    if (!performer) return 'Unknown';
+
+    if ('name' in performer && typeof performer.name === 'string') {
+      return performer.name;
+    }
+    if ('email' in performer && typeof performer.email === 'string') {
+      return performer.email;
+    }
+    if ('username' in performer && typeof performer.username === 'string') {
+      return performer.username;
+    }
   }
 
-  get targetUserName(): string {
+  get targetUserName() {
     if (!this.targetUserType) return null;
 
     const target = this.targetRoot || this.targetUser || this.targetEmployee;
-    return target
-      ? target['name'] || target['email'] || target['username']
-      : 'Unknown';
+
+    if (!target) return 'Unknown';
+
+    if ('name' in target && typeof target.name === 'string') {
+      return target.name;
+    }
+    if ('email' in target && typeof target.email === 'string') {
+      return target.email;
+    }
+    if ('username' in target && typeof target.username === 'string') {
+      return target.username;
+    }
   }
 
   get changesSummary(): string {

@@ -12,123 +12,77 @@ import {
   BeforeUpdate,
 } from 'sequelize-typescript';
 
-// import { ApiEntity } from '../../api-entities/entities/api-entity.entity';
-// import { Transaction } from '../../transactions/entities/transaction.entity';
-import {
-  //   WebhookEventType,
-  WebhookStatus,
-  WebhookProvider,
-} from '../enums/api-webhook.enum';
+import { Transaction } from 'src/common/transaction/entities/transaction.entity';
+import { ApiEntity } from 'src/common/api-entity/entities/api-entity.entity';
+import { WebhookStatus, WebhookProvider } from '../enums/api-webhook.enum';
 
 @Table({
   tableName: 'api_webhooks',
   timestamps: true,
   underscored: true,
   indexes: [
-    {
-      fields: ['transaction_id'],
-    },
-    {
-      fields: ['api_entity_id'],
-    },
-    {
-      fields: ['provider', 'event_type'],
-    },
-    {
-      fields: ['status', 'created_at'],
-    },
+    { fields: ['transaction_id'] },
+    { fields: ['api_entity_id'] },
+    { fields: ['provider', 'event_type'] },
+    { fields: ['status', 'created_at'] },
   ],
 })
 export class ApiWebhook extends Model<ApiWebhook> {
   @PrimaryKey
   @Default(DataType.UUIDV4)
-  @Column({
-    type: DataType.UUID,
-  })
+  @Column({ type: DataType.UUID })
   declare id: string;
 
   @ForeignKey(() => Transaction)
-  @Column({
-    field: 'transaction_id',
-    type: DataType.UUID,
-  })
-  transactionId: string;
+  @Column({ field: 'transaction_id', type: DataType.UUID })
+  transactionId?: string;
 
   @ForeignKey(() => ApiEntity)
-  @Column({
-    field: 'api_entity_id',
-    type: DataType.UUID,
-  })
+  @Column({ field: 'api_entity_id', type: DataType.UUID })
   apiEntityId: string;
 
   @AllowNull(false)
-  @Column({
-    type: DataType.ENUM(...Object.values(WebhookProvider)),
-  })
+  @Column({ type: DataType.ENUM(...Object.values(WebhookProvider)) })
   provider: WebhookProvider;
 
   @AllowNull(false)
   @Index
-  @Column({
-    field: 'event_type',
-    type: DataType.STRING,
-  })
+  @Column({ field: 'event_type', type: DataType.STRING })
   eventType: string;
 
   @AllowNull(false)
-  @Column({
-    type: DataType.JSON,
-  })
-  payload: Record<string, any>;
+  @Column({ type: DataType.JSON })
+  payload: Record<string, unknown>;
 
-  @Column({
-    type: DataType.STRING,
-  })
-  signature: string;
+  @Column({ type: DataType.STRING })
+  signature?: string;
 
-  @Column({
-    type: DataType.JSON,
-  })
-  headers: Record<string, any>;
+  @Column({ type: DataType.JSON })
+  headers?: Record<string, unknown>;
 
   @Default(WebhookStatus.PENDING)
-  @Column({
-    type: DataType.STRING,
-  })
+  @Column({ type: DataType.ENUM(...Object.values(WebhookStatus)) })
   status: WebhookStatus;
 
   @Default(0)
   @Column({
     type: DataType.INTEGER,
-    validate: {
-      min: 0,
-    },
+    validate: { min: 0 },
   })
   attempts: number;
 
-  @Column({
-    field: 'last_attempt_at',
-    type: DataType.DATE,
-  })
-  lastAttemptAt: Date;
+  @Column({ field: 'last_attempt_at', type: DataType.DATE })
+  lastAttemptAt?: Date;
 
-  @Column({
-    type: DataType.JSON,
-  })
-  response: Record<string, any>;
+  @Column({ type: DataType.JSON })
+  response?: Record<string, unknown>;
 
-  @Default(Date.now)
-  @Column({
-    field: 'created_at',
-    type: DataType.DATE,
-  })
+  @Default(() => new Date())
+  @Column({ field: 'created_at', type: DataType.DATE })
   declare createdAt: Date;
 
-  @Default(Date.now)
-  @Column({
-    field: 'updated_at',
-    type: DataType.DATE,
-  })
+  @Default(() => new Date())
+  @Column({ field: 'updated_at', type: DataType.DATE })
   declare updatedAt: Date;
 
   // Associations
