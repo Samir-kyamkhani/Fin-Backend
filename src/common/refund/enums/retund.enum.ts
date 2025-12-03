@@ -1,0 +1,8 @@
+export enum RefundStatus {
+  PENDING = 'PENDING',
+  SUCCESS = 'SUCCESS',
+  FAILED = 'FAILED',
+  REVERSED = 'REVERSED',
+  REFUNDED = 'REFUNDED',
+  CANCELLED = 'CANCELLED',
+}
