@@ -2,7 +2,6 @@ import { Module } from '@nestjs/common';
 import { TransactionService } from './service/transaction.service';
 import { SequelizeModule } from '@nestjs/sequelize';
 import { Transaction } from './entities/transaction.entity';
-import { User } from 'src/user/entities/user.entity';
 import { Wallet } from 'src/common/wallet/entities/wallet.entity';
 import { ApiEntity } from 'src/common/api-entity/entities/api-entity.entity';
 import { ApiWebhook } from 'src/common/api-webhook/entities/api-webhook.entity';
@@ -11,6 +10,7 @@ import { RootCommissionEarning } from 'src/common/root-commission-earning/entiti
 import { LedgerEntry } from 'src/common/ledger-entry/entities/ledger-entry.entity';
 import { Refund } from 'src/common/refund/entities/refund.entity';
 import { ServiceProvider } from 'src/common/service-provider/entities/service-provider.entity';
+import { User } from 'src/user/entities/user.entity';
 
 @Module({
   imports: [
