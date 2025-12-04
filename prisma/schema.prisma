@@ -1012,21 +1012,21 @@ model IdempotencyKey {
 // ==================== AUDIT SYSTEM ====================
 
 model AuditLog {
-  id             String         @id @default(uuid())
-  performerType  PerformerType  @map("performer_type")
-  performerId    String         @map("performer_id")
-  targetUserType TargetUserType @map("target_user_type")
-  targetUserId   String         @map("target_user_id")
-  action         String         @db.VarChar(100)
-  resourceType   String         @map("resource_type") @db.VarChar(50)
-  resourceId     String         @map("resource_id")
-  oldData        Json?          @map("old_data") @db.Json
-  newData        Json?          @map("new_data") @db.Json
+  id             String      @id @default(uuid())
+  performerType  String      @map("performer_type")
+  performerId    String      @map("performer_id")
+  targetUserType String      @map("target_user_type")
+  targetUserId   String      @map("target_user_id")
+  action         String      @db.VarChar(100)
+  resourceType   String      @map("resource_type") @db.VarChar(50)
+  resourceId     String      @map("resource_id")
+  oldData        Json?       @map("old_data") @db.Json
+  newData        Json?       @map("new_data") @db.Json
   status         AuditStatus
-  ipAddress      String?        @map("ip_address") @db.VarChar(45)
-  userAgent      String?        @map("user_agent") @db.Text
-  metadata       Json?          @db.Json
-  createdAt      DateTime       @default(now()) @map("created_at")
+  ipAddress      String?     @map("ip_address") @db.VarChar(45)
+  userAgent      String?     @map("user_agent") @db.Text
+  metadata       Json?       @db.Json
+  createdAt      DateTime    @default(now()) @map("created_at")
 
   @@index([performerType, performerId])
   @@index([targetUserType, targetUserId])
@@ -1247,21 +1247,8 @@ enum RefundStatus {
   SUCCESS
 }
 
-enum PerformerType {
-  ROOT
-  USER
-  EMPLOYEE
-  SYSTEM
-}
-
-enum TargetUserType {
-  ROOT
-  USER
-  EMPLOYEE
-}
-
 enum AuditStatus {
   SUCCESS
   FAILED
-  PARTIAL
+  PENDING
 }
