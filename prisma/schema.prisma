@@ -898,7 +898,6 @@ model IpWhitelist {
   id         String   @id @default(uuid())
   domainName String   @unique @map("domain_name") @db.VarChar(255)
   serverIp   String   @map("server_ip") @db.VarChar(45)
-  localIp    String?  @unique @map("local_ip") @db.VarChar(45)
   userId     String   @map("user_id")
   rootId     String?  @map("root_id")
   createdAt  DateTime @default(now()) @map("created_at")
@@ -908,7 +907,6 @@ model IpWhitelist {
   root Root? @relation(fields: [rootId], references: [id])
 
   @@index([domainName])
-  @@index([localIp])
   @@index([userId])
   @@index([rootId])
   @@map("ip_whitelists")

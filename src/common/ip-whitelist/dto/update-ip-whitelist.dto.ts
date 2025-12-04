@@ -1,4 +1,20 @@
-import { PartialType } from '@nestjs/mapped-types';
-import { CreateIpWhitelistDto } from './create-ip-whitelist.dto.js';
+import { IsString, IsOptional, IsIP, Length } from 'class-validator';
+export class UpdateIpWhitelistDto {
+  @IsOptional()
+  @IsString()
+  @Length(1, 255)
+  domainName?: string;
 
-export class UpdateIpWhitelistDto extends PartialType(CreateIpWhitelistDto) {}
+  @IsOptional()
+  @IsString()
+  @IsIP()
+  serverIp?: string;
+
+  @IsOptional()
+  @IsString()
+  userId?: string;
+
+  @IsOptional()
+  @IsString()
+  rootId?: string | null;
+}
