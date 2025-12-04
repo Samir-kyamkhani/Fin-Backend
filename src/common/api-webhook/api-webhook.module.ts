@@ -1,13 +1,9 @@
 import { Module } from '@nestjs/common';
 import { ApiWebhookService } from './service/api-webhook.service';
-import { SequelizeModule } from '@nestjs/sequelize';
-import { ApiWebhook } from './entities/api-webhook.entity';
-import { ApiEntity } from 'src/common/api-entity/entities/api-entity.entity';
-import { Transaction } from '../transaction/entities/transaction.entity';
 
 @Module({
-  imports: [SequelizeModule.forFeature([ApiWebhook, ApiEntity, Transaction])],
+  imports: [],
   providers: [ApiWebhookService],
-  exports: [ApiWebhookService, SequelizeModule],
+  exports: [ApiWebhookService],
 })
 export class ApiWebhookModule {}
