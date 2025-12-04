@@ -1,5 +1,5 @@
 generator client {
-  provider = "prisma-client"
+  provider = "prisma-client-js"
   output   = "../generated/prisma"
 }
 
@@ -33,6 +33,7 @@ model Root {
   roleId               String?    @map("role_id")
 
   // Root Business Capabilities
+  children               User[]
   wallets                RootWallet[]
   bankAccounts           RootBankDetail[]
   commissionEarnings     RootCommissionEarning[]
@@ -82,60 +83,60 @@ model Employee {
   updatedAt            DateTime       @default(now()) @updatedAt @map("updated_at")
   deletedAt            DateTime?      @map("deleted_at")
   createdByType        CreatorType    @map("created_by_type")
-  createdByIdUser      String         @map("created_by_user_id")
-  createdByIdRoot      String         @map("created_by_root_id")
+  createdByUserId      String         @map("created_by_user_id")
+  createdByRootId      String         @map("created_by_root_id")
 
   department          Department           @relation(fields: [departmentId], references: [id])
   employeePermissions EmployeePermission[]
-  createdByRoot       Root?                @relation("EmployeeCreatedByRoot", fields: [createdByIdRoot], references: [id])
-  createdByUser       User?                @relation("EmployeeCreatedByUser", fields: [createdByIdUser], references: [id])
+  createdByRoot       Root?                @relation("EmployeeCreatedByRoot", fields: [createdByRootId], references: [id])
+  createdByUser       User?                @relation("EmployeeCreatedByUser", fields: [createdByUserId], references: [id])
   businessKycs        BusinessKyc[]        @relation("BusinessKycVerifiedByEmployee")
   user                User?                @relation(fields: [userId], references: [id])
   userId              String?
 
   @@index([departmentId])
-  @@index([createdByIdUser, createdByIdRoot])
+  @@index([createdByUserId, createdByRootId])
   @@index([hierarchyLevel])
   @@index([hierarchyPath])
   @@map("employees")
 }
 
 model User {
-  id                            String      @id @default(uuid())
-  username                      String      @unique
-  firstName                     String      @map("first_name")
-  lastName                      String      @map("last_name")
-  profileImage                  String?     @map("profile_image") @db.Text
-  email                         String      @unique
-  phoneNumber                   String      @unique @map("phone_number")
+  id                            String     @id @default(uuid())
+  username                      String     @unique
+  firstName                     String     @map("first_name")
+  lastName                      String     @map("last_name")
+  profileImage                  String?    @map("profile_image") @db.Text
+  email                         String     @unique
+  phoneNumber                   String     @unique @map("phone_number")
   password                      String
-  passwordSalt                  String?     @map("password_salt")
-  transactionPin                String?     @map("transaction_pin")
-  transactionPinSalt            String?     @map("transaction_pin_salt")
-  parentId                      String?     @map("parent_id")
-  hierarchyLevel                Int         @default(0) @map("hierarchy_level")
-  hierarchyPath                 String      @map("hierarchy_path")
-  status                        UserStatus  @default(ACTIVE)
-  isKycVerified                 Boolean     @default(false) @map("is_kyc_verified")
-  roleId                        String      @map("role_id")
-  refreshToken                  String?     @map("refresh_token") @db.Text
-  passwordResetToken            String?     @map("password_reset_token")
-  passwordResetExpires          DateTime?   @map("password_reset_expires")
-  emailVerificationToken        String?     @map("email_verification_token")
-  emailVerifiedAt               DateTime?   @map("email_verified_at")
-  emailVerificationTokenExpires DateTime?   @map("email_verification_token_expires")
-  lastLoginAt                   DateTime?   @map("last_login_at")
-  deactivationReason            String?     @map("deactivation_reason") @db.Text
-  customerId                    String      @unique @map("customer_id") @db.VarChar(8)
-  createdAt                     DateTime    @default(now()) @map("created_at")
-  updatedAt                     DateTime    @default(now()) @updatedAt @map("updated_at")
-  deletedAt                     DateTime?   @map("deleted_at")
-  createdById                   String      @map("created_by_id")
-  createdByType                 CreatorType @default(USER) @map("created_by_type")
-  businessKycId                 String?     @map("business_kyc_id")
+  passwordSalt                  String?    @map("password_salt")
+  transactionPin                String?    @map("transaction_pin")
+  transactionPinSalt            String?    @map("transaction_pin_salt")
+  parentId                      String?    @map("parent_id")
+  hierarchyLevel                Int        @default(0) @map("hierarchy_level")
+  hierarchyPath                 String     @map("hierarchy_path")
+  status                        UserStatus @default(ACTIVE)
+  isKycVerified                 Boolean    @default(false) @map("is_kyc_verified")
+  roleId                        String     @map("role_id")
+  refreshToken                  String?    @map("refresh_token") @db.Text
+  passwordResetToken            String?    @map("password_reset_token")
+  passwordResetExpires          DateTime?  @map("password_reset_expires")
+  emailVerificationToken        String?    @map("email_verification_token")
+  emailVerifiedAt               DateTime?  @map("email_verified_at")
+  emailVerificationTokenExpires DateTime?  @map("email_verification_token_expires")
+  lastLoginAt                   DateTime?  @map("last_login_at")
+  deactivationReason            String?    @map("deactivation_reason") @db.Text
+  customerId                    String     @unique @map("customer_id") @db.VarChar(8)
+  createdAt                     DateTime   @default(now()) @map("created_at")
+  updatedAt                     DateTime   @default(now()) @updatedAt @map("updated_at")
+  deletedAt                     DateTime?  @map("deleted_at")
+  rootParentId                  String     @map("root_parent_id")
+  businessKycId                 String?    @map("business_kyc_id")
 
   // Relations
   parent                    User?                   @relation("UserHierarchy", fields: [parentId], references: [id])
+  rootParent                Root?                   @relation(fields: [rootParentId], references: [id])
   children                  User[]                  @relation("UserHierarchy")
   role                      Role                    @relation(fields: [roleId], references: [id])
   wallets                   Wallet[]
@@ -168,7 +169,7 @@ model User {
   @@index([hierarchyLevel])
   @@index([hierarchyPath])
   @@index([roleId])
-  @@index([createdById, createdByType])
+  @@index([rootParentId])
   @@index([customerId])
   @@index([businessKycId])
   @@map("users")
