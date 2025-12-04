@@ -10,7 +10,7 @@ import {
   Matches,
   IsNotEmpty,
 } from 'class-validator';
-import { BusinessType } from '../enums/business-kyc.enum';
+import { BusinessType } from '../enums/business-kyc.enum.js';
 
 export class CreateBusinessKycDto {
   @IsString()

@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { RootLedgerEntryService } from './service/root-ledger-entry.service';
+import { RootLedgerEntryService } from './service/root-ledger-entry.service.js';
 
 @Module({
   providers: [RootLedgerEntryService],

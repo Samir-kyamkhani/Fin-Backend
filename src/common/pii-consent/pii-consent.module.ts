@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { PiiConsentService } from './service/pii-consent.service';
+import { PiiConsentService } from './service/pii-consent.service.js';
 
 @Module({
   imports: [],

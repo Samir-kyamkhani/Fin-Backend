@@ -1,5 +1,5 @@
 import { IsString, IsEnum, IsOptional, IsUUID } from 'class-validator';
-import { KycStatus } from '../enums/business-kyc.enum';
+import { KycStatus } from '../enums/business-kyc.enum.js';
 
 export class VerifyBusinessKycDto {
   @IsUUID()

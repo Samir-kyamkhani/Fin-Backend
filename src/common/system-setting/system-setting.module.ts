@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { SystemSettingService } from './service/system-setting.service';
+import { SystemSettingService } from './service/system-setting.service.js';
 
 @Module({
   providers: [SystemSettingService],

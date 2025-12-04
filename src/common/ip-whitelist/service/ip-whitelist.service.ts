@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { CreateIpWhitelistDto } from '../dto/create-ip-whitelist.dto';
-import { UpdateIpWhitelistDto } from '../dto/update-ip-whitelist.dto';
+import { CreateIpWhitelistDto } from '../dto/create-ip-whitelist.dto.js';
+import { UpdateIpWhitelistDto } from '../dto/update-ip-whitelist.dto.js';
 
 @Injectable()
 export class IpWhitelistService {

@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { CreateIdempotencyKeyDto } from '../dto/create-idempotency-key.dto';
-import { UpdateIdempotencyKeyDto } from '../dto/update-idempotency-key.dto';
+import { CreateIdempotencyKeyDto } from '../dto/create-idempotency-key.dto.js';
+import { UpdateIdempotencyKeyDto } from '../dto/update-idempotency-key.dto.js';
 
 @Injectable()
 export class IdempotencyKeyService {

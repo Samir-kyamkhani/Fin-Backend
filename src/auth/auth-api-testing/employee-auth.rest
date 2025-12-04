@@ -1,0 +1,108 @@
+@baseUrl = http://localhost:3000/api/v1
+@accessToken =
+@refreshToken =
+@employeeId =
+
+
+### EMPLOYEE LOGIN
+POST {{baseUrl}}/employee/auth/login
+Content-Type: application/json
+
+{
+  "email": "employee@example.com",
+  "password": "your-password"
+}
+
+> {% 
+   client.global.set("accessToken", response.body.tokens.accessToken);
+   client.global.set("refreshToken", response.body.tokens.refreshToken);
+   client.global.set("employeeId", response.body.user.id);
+%}
+
+---
+
+
+### EMPLOYEE LOGOUT
+POST {{baseUrl}}/employee/auth/logout
+Authorization: Bearer {{accessToken}}
+
+---
+
+
+### EMPLOYEE REFRESH TOKEN
+POST {{baseUrl}}/employee/auth/refresh-token
+Content-Type: application/json
+
+{
+  "refreshToken": "{{refreshToken}}"
+}
+
+> {% 
+   client.global.set("accessToken", response.body.tokens.accessToken);
+   client.global.set("refreshToken", response.body.tokens.refreshToken);
+%}
+
+---
+
+
+### EMPLOYEE CURRENT PROFILE
+GET {{baseUrl}}/employee/auth/current/{{employeeId}}
+Authorization: Bearer {{accessToken}}
+
+---
+
+
+### EMPLOYEE DASHBOARD
+GET {{baseUrl}}/employee/auth/dashboard/{{employeeId}}
+Authorization: Bearer {{accessToken}}
+
+---
+
+
+### EMPLOYEE UPDATE CREDENTIALS
+PATCH {{baseUrl}}/employee/auth/credentials/{{employeeId}}
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+  "currentPassword": "oldpass",
+  "newPassword": "newpass123"
+}
+
+---
+
+
+### EMPLOYEE UPDATE PROFILE
+PATCH {{baseUrl}}/employee/auth/profile/{{employeeId}}
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+  "firstName": "Mohit",
+  "lastName": "Yadav",
+  "username": "emp-mohit",
+  "email": "employee@example.com",
+  "phoneNumber": "9992211111"
+}
+
+---
+
+
+### EMPLOYEE PASSWORD RESET REQUEST
+POST {{baseUrl}}/employee/auth/request-password-reset
+Content-Type: application/json
+
+{
+  "email": "employee@example.com"
+}
+
+---
+
+
+### EMPLOYEE CONFIRM PASSWORD RESET
+POST {{baseUrl}}/employee/auth/confirm-password-reset
+Content-Type: application/json
+
+{
+  "token": "token-from-email"
+}

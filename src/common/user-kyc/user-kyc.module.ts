@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { UserKycService } from './service/user-kyc.service';
+import { UserKycService } from './service/user-kyc.service.js';
 
 @Module({
   providers: [UserKycService],

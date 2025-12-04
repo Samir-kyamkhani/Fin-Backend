@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { UserKycService } from '../service/user-kyc.service';
+import { UserKycService } from '../service/user-kyc.service.js';
 
 describe('UserKycService', () => {
   let service: UserKycService;

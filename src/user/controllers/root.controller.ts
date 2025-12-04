@@ -7,9 +7,9 @@ import {
   Param,
   Delete,
 } from '@nestjs/common';
-import { RootService } from '../../root/services/root.service';
-import { CreateRootDto } from '../../root/dto/create-root.dto';
-import { UpdateRootDto } from '../../root/dto/update-root.dto';
+import { RootService } from '../../root/services/root.service.js';
+import { CreateRootDto } from '../../root/dto/create-root.dto.js';
+import { UpdateRootDto } from '../../root/dto/update-root.dto.js';
 
 @Controller('root')
 export class RootController {

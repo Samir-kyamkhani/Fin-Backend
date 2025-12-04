@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { CreateSystemSettingDto } from '../dto/create-system-setting.dto';
-import { UpdateSystemSettingDto } from '../dto/update-system-setting.dto';
+import { CreateSystemSettingDto } from '../dto/create-system-setting.dto.js';
+import { UpdateSystemSettingDto } from '../dto/update-system-setting.dto.js';
 
 @Injectable()
 export class SystemSettingService {

@@ -1,0 +1,108 @@
+@baseUrl = http://localhost:3000/api/v1
+@accessToken =
+@refreshToken =
+@rootId =
+
+
+### ROOT LOGIN
+POST {{baseUrl}}/root/auth/login
+Content-Type: application/json
+
+{
+  "email": "root@example.com",
+  "password": "your-password"
+}
+
+> {% 
+   client.global.set("accessToken", response.body.tokens.accessToken);
+   client.global.set("refreshToken", response.body.tokens.refreshToken);
+   client.global.set("rootId", response.body.user.id);
+%}
+
+---
+
+
+### ROOT LOGOUT
+POST {{baseUrl}}/root/auth/logout
+Authorization: Bearer {{accessToken}}
+
+---
+
+
+### ROOT REFRESH TOKEN
+POST {{baseUrl}}/root/auth/refresh-token
+Content-Type: application/json
+
+{
+  "refreshToken": "{{refreshToken}}"
+}
+
+> {% 
+   client.global.set("accessToken", response.body.tokens.accessToken);
+   client.global.set("refreshToken", response.body.tokens.refreshToken);
+%}
+
+---
+
+
+### ROOT CURRENT USER
+GET {{baseUrl}}/root/auth/current/{{rootId}}
+Authorization: Bearer {{accessToken}}
+
+---
+
+
+### ROOT DASHBOARD
+GET {{baseUrl}}/root/auth/dashboard/{{rootId}}
+Authorization: Bearer {{accessToken}}
+
+---
+
+
+### ROOT UPDATE CREDENTIALS
+PATCH {{baseUrl}}/root/auth/credentials/{{rootId}}
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+  "currentPassword": "oldpass",
+  "newPassword": "newpass123"
+}
+
+---
+
+
+### ROOT UPDATE PROFILE
+PATCH {{baseUrl}}/root/auth/profile/{{rootId}}
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+  "firstName": "Root",
+  "lastName": "Admin",
+  "username": "rootmaster",
+  "email": "root@example.com",
+  "phoneNumber": "9876543210"
+}
+
+---
+
+
+### ROOT PASSWORD RESET REQUEST
+POST {{baseUrl}}/root/auth/request-password-reset
+Content-Type: application/json
+
+{
+  "email": "root@example.com"
+}
+
+---
+
+
+### ROOT CONFIRM PASSWORD RESET
+POST {{baseUrl}}/root/auth/confirm-password-reset
+Content-Type: application/json
+
+{
+  "token": "token-from-email"
+}

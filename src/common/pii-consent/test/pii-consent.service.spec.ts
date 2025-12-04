@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { PiiConsentService } from '../service/pii-consent.service';
+import { PiiConsentService } from '../service/pii-consent.service.js';
 
 describe('PiiConsentService', () => {
   let service: PiiConsentService;

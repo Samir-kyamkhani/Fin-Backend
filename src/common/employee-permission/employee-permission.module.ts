@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { EmployeePermissionService } from './service/employee-permission.service';
+import { EmployeePermissionService } from './service/employee-permission.service.js';
 
 @Module({
   imports: [],

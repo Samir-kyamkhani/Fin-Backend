@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { CreateDepartmentPermissionDto } from '../dto/create-department-permission.dto';
-import { UpdateDepartmentPermissionDto } from '../dto/update-department-permission.dto';
+import { CreateDepartmentPermissionDto } from '../dto/create-department-permission.dto.js';
+import { UpdateDepartmentPermissionDto } from '../dto/update-department-permission.dto.js';
 
 @Injectable()
 export class DepartmentPermissionService {

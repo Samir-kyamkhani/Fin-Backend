@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { RootWalletService } from '../service/root-wallet.service';
+import { RootWalletService } from '../service/root-wallet.service.js';
 
 describe('RootWalletService', () => {
   let service: RootWalletService;

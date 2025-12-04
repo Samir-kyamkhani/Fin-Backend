@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { SystemSettingService } from '../service/system-setting.service';
+import { SystemSettingService } from '../service/system-setting.service.js';
 
 describe('SystemSettingService', () => {
   let service: SystemSettingService;

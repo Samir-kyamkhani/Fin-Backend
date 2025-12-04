@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { CommissionSettingService } from './service/commission-setting.service';
+import { CommissionSettingService } from './service/commission-setting.service.js';
 @Module({
   imports: [],
   providers: [CommissionSettingService],

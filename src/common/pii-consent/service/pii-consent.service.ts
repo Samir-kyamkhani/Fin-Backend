@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { CreatePiiConsentDto } from '../dto/create-pii-consent.dto';
-import { UpdatePiiConsentDto } from '../dto/update-pii-consent.dto';
+import { CreatePiiConsentDto } from '../dto/create-pii-consent.dto.js';
+import { UpdatePiiConsentDto } from '../dto/update-pii-consent.dto.js';
 
 @Injectable()
 export class PiiConsentService {

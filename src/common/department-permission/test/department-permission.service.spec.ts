@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { DepartmentPermissionService } from '../service/department-permission.service';
+import { DepartmentPermissionService } from '../service/department-permission.service.js';
 
 describe('DepartmentPermissionService', () => {
   let service: DepartmentPermissionService;

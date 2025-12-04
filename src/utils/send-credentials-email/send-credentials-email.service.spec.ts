@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { SendCredentialsEmailService } from './send-credentials-email.service';
+import { SendCredentialsEmailService } from './send-credentials-email.service.js';
 
 describe('SendCredentialsEmailService', () => {
   let service: SendCredentialsEmailService;

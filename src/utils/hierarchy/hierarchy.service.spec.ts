@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { HierarchyService } from './hierarchy.service';
+import { HierarchyService } from './hierarchy.service.js';
 
 describe('HierarchyService', () => {
   let service: HierarchyService;

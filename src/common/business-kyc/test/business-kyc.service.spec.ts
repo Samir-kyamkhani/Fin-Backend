@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { BusinessKycService } from '../service/business-kyc.service';
+import { BusinessKycService } from '../service/business-kyc.service.js';
 
 describe('BusinessKycService', () => {
   let service: BusinessKycService;

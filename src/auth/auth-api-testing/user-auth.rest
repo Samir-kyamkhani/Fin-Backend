@@ -1,0 +1,127 @@
+@baseUrl = http://localhost:3000/api/v1
+@accessToken =
+@refreshToken =
+@userId =
+
+
+### USER LOGIN
+POST {{baseUrl}}/user/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@example.com",
+  "customerId": "CST12345",
+  "password": "your-password"
+}
+
+> {% 
+   client.global.set("accessToken", response.body.tokens.accessToken);
+   client.global.set("refreshToken", response.body.tokens.refreshToken);
+   client.global.set("userId", response.body.user.id);
+%}
+
+---
+
+
+### USER LOGOUT
+POST {{baseUrl}}/user/auth/logout
+Authorization: Bearer {{accessToken}}
+
+---
+
+
+### USER REFRESH TOKEN
+POST {{baseUrl}}/user/auth/refresh-token
+Content-Type: application/json
+
+{
+  "refreshToken": "{{refreshToken}}"
+}
+
+> {% 
+   client.global.set("accessToken", response.body.tokens.accessToken);
+   client.global.set("refreshToken", response.body.tokens.refreshToken);
+%}
+
+---
+
+
+### USER CURRENT PROFILE
+GET {{baseUrl}}/user/auth/current/{{userId}}
+Authorization: Bearer {{accessToken}}
+
+---
+
+
+### USER DASHBOARD
+GET {{baseUrl}}/user/auth/dashboard/{{userId}}
+Authorization: Bearer {{accessToken}}
+
+---
+
+
+### USER UPDATE CREDENTIALS
+PATCH {{baseUrl}}/user/auth/credentials/{{userId}}
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+  "currentPassword": "oldpass",
+  "newPassword": "newpass123"
+}
+
+---
+
+
+### USER UPDATE PROFILE
+PATCH {{baseUrl}}/user/auth/profile/{{userId}}
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+  "firstName": "Amit",
+  "lastName": "Sharma",
+  "username": "admin123",
+  "email": "admin@example.com",
+  "phoneNumber": "9998811111"
+}
+
+---
+
+
+### USER PASSWORD RESET REQUEST
+POST {{baseUrl}}/user/auth/request-password-reset
+Content-Type: application/json
+
+{
+  "email": "admin@example.com"
+}
+
+---
+
+
+### USER CONFIRM PASSWORD RESET
+POST {{baseUrl}}/user/auth/confirm-password-reset
+Content-Type: application/json
+
+{
+  "token": "token-from-email"
+}
+
+---
+
+
+### USER → CREATE EMPLOYEE (ADMIN ONLY)
+POST {{baseUrl}}/user/auth/create-employee
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+  "username": "emp01",
+  "email": "emp01@example.com",
+  "phoneNumber": "9988998899",
+  "password": "empPass123",
+  "departmentId": "YOUR_DEPARTMENT_ID",
+  "firstName": "Rohit",
+  "lastName": "Verma"
+}

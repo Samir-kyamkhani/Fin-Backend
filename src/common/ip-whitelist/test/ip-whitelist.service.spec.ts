@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { IpWhitelistService } from '../service/ip-whitelist.service';
+import { IpWhitelistService } from '../service/ip-whitelist.service.js';
 
 describe('IpWhitelistService', () => {
   let service: IpWhitelistService;

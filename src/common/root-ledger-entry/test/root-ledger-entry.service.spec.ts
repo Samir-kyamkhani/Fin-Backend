@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { RootLedgerEntryService } from '../service/root-ledger-entry.service';
+import { RootLedgerEntryService } from '../service/root-ledger-entry.service.js';
 
 describe('RootLedgerEntryService', () => {
   let service: RootLedgerEntryService;

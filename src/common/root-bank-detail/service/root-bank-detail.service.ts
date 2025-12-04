@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { CreateRootBankDetailDto } from '../dto/create-root-bank-detail.dto';
-import { UpdateRootBankDetailDto } from '../dto/update-root-bank-detail.dto';
+import { CreateRootBankDetailDto } from '../dto/create-root-bank-detail.dto.js';
+import { UpdateRootBankDetailDto } from '../dto/update-root-bank-detail.dto.js';
 
 @Injectable()
 export class RootBankDetailService {

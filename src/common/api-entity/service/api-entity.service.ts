@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { CreateApiEntityDto } from '../dto/create-api-entity.dto';
-import { UpdateApiEntityDto } from '../dto/update-api-entity.dto';
+import { CreateApiEntityDto } from '../dto/create-api-entity.dto.js';
+import { UpdateApiEntityDto } from '../dto/update-api-entity.dto.js';
 
 @Injectable()
 export class ApiEntityService {

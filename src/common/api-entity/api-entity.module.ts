@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { ApiEntityService } from './service/api-entity.service';
+import { ApiEntityService } from './service/api-entity.service.js';
 
 @Module({
   imports: [],

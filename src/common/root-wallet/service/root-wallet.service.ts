@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { CreateRootWalletDto } from '../dto/create-root-wallet.dto';
-import { UpdateRootWalletDto } from '../dto/update-root-wallet.dto';
+import { CreateRootWalletDto } from '../dto/create-root-wallet.dto.js';
+import { UpdateRootWalletDto } from '../dto/update-root-wallet.dto.js';
 
 @Injectable()
 export class RootWalletService {

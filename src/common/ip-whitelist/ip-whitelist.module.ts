@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { IpWhitelistService } from './service/ip-whitelist.service';
+import { IpWhitelistService } from './service/ip-whitelist.service.js';
 
 @Module({
   imports: [],

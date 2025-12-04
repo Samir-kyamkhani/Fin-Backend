@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { IdempotencyKeyService } from './service/idempotency-key.service';
+import { IdempotencyKeyService } from './service/idempotency-key.service.js';
 
 @Module({
   imports: [],

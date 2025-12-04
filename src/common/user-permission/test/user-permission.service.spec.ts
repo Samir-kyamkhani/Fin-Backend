@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { UserPermissionService } from '../service/user-permission.service';
+import { UserPermissionService } from '../service/user-permission.service.js';
 
 describe('UserPermissionService', () => {
   let service: UserPermissionService;

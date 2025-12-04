@@ -14,7 +14,7 @@ export class LoginDto {
 
   @IsNumber()
   @IsOptional()
-  customerId?: number;
+  customerId?: string;
 
   @IsString()
   @MinLength(1)

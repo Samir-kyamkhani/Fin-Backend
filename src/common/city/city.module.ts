@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { CityService } from './service/city.service';
+import { CityService } from './service/city.service.js';
 
 @Module({
   imports: [],

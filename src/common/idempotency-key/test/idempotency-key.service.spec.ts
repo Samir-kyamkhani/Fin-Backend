@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { IdempotencyKeyService } from '../service/idempotency-key.service';
+import { IdempotencyKeyService } from '../service/idempotency-key.service.js';
 
 describe('IdempotencyKeyService', () => {
   let service: IdempotencyKeyService;

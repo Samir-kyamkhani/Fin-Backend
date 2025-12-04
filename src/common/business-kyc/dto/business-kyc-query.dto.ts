@@ -1,6 +1,6 @@
 import { IsOptional, IsString, IsEnum, IsNumber } from 'class-validator';
 import { Type, Transform } from 'class-transformer';
-import { KycStatus } from '../enums/business-kyc.enum';
+import { KycStatus } from '../enums/business-kyc.enum.js';
 
 export enum SortOrder {
   ASC = 'asc',
