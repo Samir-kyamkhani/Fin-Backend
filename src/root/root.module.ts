@@ -1,6 +1,5 @@
 import { Module } from '@nestjs/common';
 import { RootService } from './services/root.service';
-import { SequelizeModule } from '@nestjs/sequelize';
 import { RootController } from './controllers/root.controller';
 import { AuditLogModule } from '../common/audit-log/audit-log.module';
 
@@ -8,6 +7,6 @@ import { AuditLogModule } from '../common/audit-log/audit-log.module';
   imports: [AuditLogModule],
   controllers: [RootController],
   providers: [RootService],
-  exports: [RootService, SequelizeModule],
+  exports: [RootService],
 })
 export class RootModule {}
