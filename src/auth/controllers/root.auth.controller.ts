@@ -1,15 +1,15 @@
 import { Controller, Get, Post, Body, Patch, Param } from '@nestjs/common';
-import { EmployeeAuthService } from '../services/employee.auth.service';
 import { LoginDto } from '../dto/login-auth.dto';
 import { RefreshTokenDto } from '../dto/refresh-token-auth.dto';
 import { ForgotPasswordDto } from '../dto/forgot-password-auth.dto';
 import { ConfirmPasswordResetDto } from '../dto/confirm-password-reset-auth.dto';
 import { UpdateCredentialsDto } from '../dto/update-credentials-auth.dto';
 import { UpdateProfileDto } from '../dto/update-profile-auth.dto';
+import { RootAuthService } from '../services/root.auth.service';
 
-@Controller('employee/auth')
+@Controller('root/auth')
 export class EmployeeAuthController {
-  constructor(private readonly authService: EmployeeAuthService) {}
+  constructor(private readonly authService: RootAuthService) {}
 
   @Post('login')
   login(@Body() dto: LoginDto) {
