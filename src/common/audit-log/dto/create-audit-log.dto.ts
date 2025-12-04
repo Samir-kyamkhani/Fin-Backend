@@ -16,6 +16,9 @@ export class CreateAuditLogDto {
   action: string;
 
   @IsString()
+  description: string;
+
+  @IsString()
   resourceType: string;
 
   @IsString()
