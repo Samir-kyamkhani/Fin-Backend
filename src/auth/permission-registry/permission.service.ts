@@ -1,7 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import type { Cache } from 'cache-manager';
-import { AuthActor } from '../types/principal.type.js';
+import { AuthActor } from '../interface/auth.interface.js';
 import { PrismaService } from '../../database/database.connection.js';
 
 export interface EffectivePermission {

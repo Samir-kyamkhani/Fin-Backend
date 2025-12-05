@@ -2,17 +2,17 @@ version: "3.9"
 
 services:
   db:
-    image: mysql:8.0
-    container_name: mysql
+    image: mariadb:10.7
+    container_name: mariadb
     restart: unless-stopped
     environment:
       MYSQL_ROOT_PASSWORD: 123456789
       MYSQL_DATABASE: subhan
     ports:
       - "3306:3306"
-    command: --default-authentication-plugin=mysql_native_password
+    command: --skip-host-cache --skip-name-resolve
     volumes:
-      - mysql_data:/var/lib/mysql
+      - mariadb_data:/var/lib/mysql
 
   phpmyadmin:
     image: phpmyadmin/phpmyadmin:latest
@@ -28,4 +28,4 @@ services:
       - db
 
 volumes:
-  mysql_data:
+  mariadb_data:
