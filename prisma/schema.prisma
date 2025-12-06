@@ -415,7 +415,6 @@ model BankDetail {
   userId              String           @map("user_id")
   createdAt           DateTime         @default(now()) @map("created_at")
   updatedAt           DateTime         @default(now()) @updatedAt @map("updated_at")
-  deletedAt           DateTime?        @map("deleted_at")
 
   user User @relation(fields: [userId], references: [id])
 
@@ -699,30 +698,30 @@ model ApiIntegration {
 // ==================== KYC & ADDRESS SYSTEM ====================
 
 model UserKyc {
-  id                 String          @id @default(uuid())
-  userId             String          @unique @map("user_id")
-  firstName          String          @map("first_name") @db.VarChar(100)
-  lastName           String          @map("last_name") @db.VarChar(100)
-  fatherName         String          @map("father_name") @db.VarChar(100)
+  id                 String        @id @default(uuid())
+  userId             String        @unique @map("user_id")
+  firstName          String        @map("first_name") @db.VarChar(100)
+  lastName           String        @map("last_name") @db.VarChar(100)
+  fatherName         String        @map("father_name") @db.VarChar(100)
   dob                DateTime
   gender             UserGender
-  status             UserKycStatus   @default(PENDING)
-  type               UserKycType     @default(USER_KYC)
-  kycRejectionReason String?         @map("kyc_rejection_reason") @db.Text
-  addressId          String          @map("address_id")
-  panFile            String          @map("pan_file") @db.VarChar(500)
-  aadhaarFile        String          @map("aadhaar_file") @db.VarChar(500)
-  addressProofFile   String          @map("address_proof_file") @db.VarChar(500)
-  photo              String          @db.VarChar(500)
-  createdAt          DateTime        @default(now()) @map("created_at")
-  updatedAt          DateTime        @default(now()) @updatedAt @map("updated_at")
-  deletedAt          DateTime?       @map("deleted_at")
-  verifiedByType     VerifiedByType? @map("verified_by_type")
-  verifiedByRootId   String?         @map("verified_by_root_id")
-  verifiedByUserId   String?         @map("verified_by_user_id")
-  verifiedAt         DateTime?       @map("verified_at")
-  businessKycId      String?         @map("business_kyc_id")
-  roleType           RoleType        @default(PROPRIETOR) @map("role_type")
+  status             UserKycStatus @default(PENDING)
+  type               UserKycType   @default(USER_KYC)
+  kycRejectionReason String?       @map("kyc_rejection_reason") @db.LongText
+  addressId          String        @map("address_id")
+  panFile            String        @map("pan_file") @db.VarChar(500)
+  aadhaarFile        String        @map("aadhaar_file") @db.VarChar(500)
+  addressProofFile   String        @map("address_proof_file") @db.VarChar(500)
+  photo              String        @db.VarChar(500)
+  createdAt          DateTime      @default(now()) @map("created_at")
+  updatedAt          DateTime      @default(now()) @updatedAt @map("updated_at")
+  deletedAt          DateTime?     @map("deleted_at")
+  verifiedByType     String?       @map("verified_by_type")
+  verifiedByRootId   String?       @map("verified_by_root_id")
+  verifiedByUserId   String?       @map("verified_by_user_id")
+  verifiedAt         DateTime?     @map("verified_at")
+  businessKycId      String?       @map("business_kyc_id")
+  roleType           RoleType      @default(PROPRIETOR) @map("role_type")
 
   user           User         @relation(fields: [userId], references: [id])
   address        Address      @relation(fields: [addressId], references: [id])
@@ -741,32 +740,29 @@ model UserKyc {
 }
 
 model BusinessKyc {
-  id                    String          @id @default(uuid())
-  userId                String          @unique @map("user_id")
-  businessName          String          @map("business_name") @db.VarChar(200)
-  businessType          BusinessType    @map("business_type")
-  status                KycStatus       @default(PENDING)
-  rejectionReason       String?         @map("rejection_reason") @db.LongText
-  addressId             String          @map("address_id")
-  // panNumber             String          @map("pan_number") @db.VarChar(10)
-  // gstNumber             String          @map("gst_number") @db.VarChar(20)
-  panFile               String          @map("pan_file") @db.VarChar(500)
-  gstFile               String          @map("gst_file") @db.VarChar(500)
-  // udhyamAadhar          String?         @map("udhyam_aadhar") @db.VarChar(20)
-  brDoc                 String?         @map("br_doc") @db.VarChar(500)
-  partnershipDeed       String?         @map("partnership_deed") @db.VarChar(500)
-  partnerKycNumbers     Int?            @map("partner_kyc_numbers")
-  cin                   String?         @map("cin") @db.VarChar(25)
-  moaFile               String?         @map("moa_file") @db.VarChar(500)
-  aoaFile               String?         @map("aoa_file") @db.VarChar(500)
-  authorizedMemberCount Int             @map("authorized_member_count")
-  directorShareholding  String?         @map("director_shareholding_file") @db.VarChar(500)
-  verifiedByRootId      String?         @map("verified_by_root_id")
-  verifiedByEmployeeId  String?         @map("verified_by_employee_id")
-  verifiedByType        VerifiedByType? @map("verified_by_type")
-  verifiedAt            DateTime?       @map("verified_at")
-  createdAt             DateTime        @default(now()) @map("created_at")
-  updatedAt             DateTime        @default(now()) @updatedAt @map("updated_at")
+  id                    String       @id @default(uuid())
+  userId                String       @unique @map("user_id")
+  businessName          String       @map("business_name") @db.VarChar(200)
+  businessType          BusinessType @map("business_type")
+  status                KycStatus    @default(PENDING)
+  rejectionReason       String?      @map("rejection_reason") @db.LongText
+  addressId             String       @map("address_id")
+  panFile               String       @map("pan_file") @db.VarChar(500)
+  gstFile               String       @map("gst_file") @db.VarChar(500)
+  brDoc                 String?      @map("br_doc") @db.VarChar(500)
+  partnershipDeed       String?      @map("partnership_deed") @db.VarChar(500)
+  partnerKycNumbers     Int?         @map("partner_kyc_numbers")
+  cin                   String?      @map("cin") @db.VarChar(25)
+  moaFile               String?      @map("moa_file") @db.VarChar(500)
+  aoaFile               String?      @map("aoa_file") @db.VarChar(500)
+  authorizedMemberCount Int          @map("authorized_member_count")
+  directorShareholding  String?      @map("director_shareholding_file") @db.VarChar(500)
+  verifiedByRootId      String?      @map("verified_by_root_id")
+  verifiedByEmployeeId  String?      @map("verified_by_employee_id")
+  verifiedByType        String?      @map("verified_by_type")
+  verifiedAt            DateTime?    @map("verified_at")
+  createdAt             DateTime     @default(now()) @map("created_at")
+  updatedAt             DateTime     @default(now()) @updatedAt @map("updated_at")
 
   user               User         @relation(fields: [userId], references: [id])
   address            Address      @relation(fields: [addressId], references: [id])
@@ -778,8 +774,6 @@ model BusinessKyc {
   @@unique([userId], map: "business_kycs_user_id_unique")
   @@index([userId, status])
   @@index([verifiedByRootId, verifiedByEmployeeId])
-  // @@index([panNumber])
-  // @@index([gstNumber])
   @@index([businessType])
   @@index([addressId])
   @@map("business_kycs")
@@ -1042,12 +1036,6 @@ enum CreatorType {
   USER
 }
 
-enum VerifiedByType {
-  ROOT
-  USER
-  EMPLOYEE
-}
-
 enum BankAccountType {
   PERSONAL
   BUSINESS
@@ -1136,15 +1124,19 @@ enum UserGender {
 }
 
 enum KycStatus {
+  UNDER_REVIEW
   PENDING
   VERIFIED
   REJECTED
+  SUSPENDED
 }
 
 enum UserKycStatus {
+  UNDER_REVIEW
   PENDING
   VERIFIED
   REJECTED
+  SUSPENDED
 }
 
 enum UserKycType {
