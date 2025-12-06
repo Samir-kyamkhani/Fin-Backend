@@ -8,18 +8,17 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { LoginDto } from '../dto/login-auth.dto.js';
-import { RefreshTokenDto } from '../dto/refresh-token-auth.dto.js';
-import { ForgotPasswordDto } from '../dto/forgot-password-auth.dto.js';
-import { ConfirmPasswordResetDto } from '../dto/confirm-password-reset-auth.dto.js';
-import { UpdateCredentialsDto } from '../dto/update-credentials-auth.dto.js';
-import { UpdateProfileDto } from '../dto/update-profile-auth.dto.js';
-import { PermissionGuard } from '../guards/permission.guard.js';
-import { RolesGuard } from '../guards/role.guard.js';
+import { LoginDto } from '../dto/login-auth.dto'
+import { ForgotPasswordDto } from '../dto/forgot-password-auth.dto'
+import { ConfirmPasswordResetDto } from '../dto/confirm-password-reset-auth.dto'
+import { UpdateCredentialsDto } from '../dto/update-credentials-auth.dto'
+import { UpdateProfileDto } from '../dto/update-profile-auth.dto'
+import { PermissionGuard } from '../guards/permission.guard'
+import { RolesGuard } from '../guards/role.guard'
 import type { Request } from 'express';
-import { AuthActor } from '../interface/auth.interface.js';
-import { EmployeeAuthService } from '../services/employee.auth.service.js';
-import { JwtAuthGuard } from '../guards/jwt.guard.js';
+import { AuthActor } from '../interface/auth.interface'
+import { EmployeeAuthService } from '../services/employee.auth.service'
+import { JwtAuthGuard } from '../guards/jwt.guard'
 
 @Controller('/api/v1/employee/auth')
 export class EmployeeAuthController {
@@ -28,11 +27,6 @@ export class EmployeeAuthController {
   @Post('login')
   login(@Body() dto: LoginDto) {
     return this.authService.login(dto);
-  }
-
-  @Post('refresh-token')
-  refresh(@Body() dto: RefreshTokenDto) {
-    return this.authService.refreshToken(dto);
   }
 
   @UseGuards(JwtAuthGuard)

@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { CreateRootDto } from '../dto/create-root.dto.js';
-import { UpdateRootDto } from '../dto/update-root.dto.js';
+import { CreateRootDto } from '../dto/create-root.dto'
+import { UpdateRootDto } from '../dto/update-root.dto'
 
 @Injectable()
 export class RootService {

@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { BusinessKycService } from './service/business-kyc.service.js';
+import { BusinessKycService } from './service/business-kyc.service'
 
 @Module({
   imports: [],

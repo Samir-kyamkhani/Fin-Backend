@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { CreateUserKycDto } from '../dto/create-user-kyc.dto.js';
-import { UpdateUserKycDto } from '../dto/update-user-kyc.dto.js';
+import { CreateUserKycDto } from '../dto/create-user-kyc.dto'
+import { UpdateUserKycDto } from '../dto/update-user-kyc.dto'
 
 @Injectable()
 export class UserKycService {

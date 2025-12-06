@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { BankDetailService } from './service/bank-detail.service.js';
+import { BankDetailService } from './service/bank-detail.service'
 @Module({
   imports: [],
   providers: [BankDetailService],

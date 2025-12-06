@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { ApiIntigrationService } from './service/api-intigration.service.js';
+import { ApiIntigrationService } from './service/api-intigration.service'
 
 @Module({
   imports: [],

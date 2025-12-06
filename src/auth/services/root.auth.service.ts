@@ -6,27 +6,28 @@ import {
   ForbiddenException,
   Logger,
 } from '@nestjs/common';
-import { PrismaService } from '../../database/database.connection.js';
-import { PermissionService } from '../permission-registry/permission.service.js';
-import { RefreshTokenDto } from '../dto/refresh-token-auth.dto.js';
-import { ForgotPasswordDto } from '../dto/forgot-password-auth.dto.js';
-import { ConfirmPasswordResetDto } from '../dto/confirm-password-reset-auth.dto.js';
-import { UpdateCredentialsDto } from '../dto/update-credentials-auth.dto.js';
-import { UpdateProfileDto } from '../dto/update-profile-auth.dto.js';
-import { TokenPair, AuthActor } from '../interface/auth.interface.js';
-import { AuthUtilsService } from '../helper/auth-utils.js';
+import { PrismaService } from '../../database/database.connection';
+import { PermissionService } from '../permission-registry/permission.service';
+import { ForgotPasswordDto } from '../dto/forgot-password-auth.dto';
+import { ConfirmPasswordResetDto } from '../dto/confirm-password-reset-auth.dto';
+import { UpdateCredentialsDto } from '../dto/update-credentials-auth.dto';
+import { UpdateProfileDto } from '../dto/update-profile-auth.dto';
+import { AuthActor } from '../interface/auth.interface';
+import { AuthUtilsService } from '../helper/auth-utils';
 import { randomBytes } from 'node:crypto';
-import { LoginDto } from '../dto/login-auth.dto.js';
+import { LoginDto } from '../dto/login-auth.dto';
 import type { Request } from 'express';
-import { EmailService } from '../email/email.service.js';
-import { AuditStatus } from '../../common/audit-log/enums/audit-log.enum.js';
-import { S3Service } from '../../utils/s3/s3.service.js';
-import { IpWhitelistService } from '../../common/ip-whitelist/service/ip-whitelist.service.js';
-import { FileDeleteHelper } from '../../utils/helper/file-delete-helper.service.js';
+import { EmailService } from '../email/email.service';
+import { AuditStatus } from '../../common/audit-log/enums/audit-log.enum';
+import { S3Service } from '../../utils/s3/s3.service';
+import { IpWhitelistService } from '../../common/ip-whitelist/service/ip-whitelist.service';
+import { FileDeleteHelper } from '../../utils/helper/file-delete-helper.service';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class RootAuthService {
-  private readonly logger = new Logger(RootAuthService.name);
+  private logger = new Logger(RootAuthService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly authUtils: AuthUtilsService,
@@ -34,160 +35,134 @@ export class RootAuthService {
     private readonly emailService: EmailService,
     private readonly s3: S3Service,
     private readonly ipWhitelistService: IpWhitelistService,
+    private readonly configService: ConfigService,
   ) {}
+
+  private async logAuthEvent(params: {
+    performerId: string | null;
+    action: string;
+    status: AuditStatus;
+    req?: Request;
+    metadata?: any;
+  }) {
+    const { performerId, action, status, metadata, req } = params;
+
+    await this.authUtils.createAuthAuditLog({
+      performerType: 'ROOT',
+      performerId: performerId,
+      action,
+      status,
+      ipAddress: req ? this.authUtils.getClientIp(req) : null,
+      userAgent: req ? this.authUtils.getClientUserAgent(req) : null,
+      metadata: metadata || {},
+    });
+  }
+
+  private toSafeRoot(root: any) {
+    return this.authUtils.stripSensitive(root, [
+      'password',
+      'refreshToken',
+      'passwordResetToken',
+    ]);
+  }
 
   async login(dto: LoginDto, req: Request) {
     const root = await this.prisma.root.findFirst({
-      where: {
-        OR: [{ email: dto.email }],
-      },
+      where: { email: dto.email },
       include: {
-        role: {
-          select: {
-            name: true,
-            hierarchyLevel: true,
-            createdByType: true,
-          },
-        },
+        role: { select: { name: true, hierarchyLevel: true } },
       },
     });
 
-    const clientIp = this.authUtils.getClientIp(req);
-    const clientOrigin = this.authUtils.getClientOrigin(req);
-    const userAgent = this.authUtils.getClientUserAgent(req);
+    const ip = this.authUtils.getClientIp(req);
+    const origin = this.authUtils.getClientOrigin(req);
 
     if (!root || root.deletedAt || root.status !== 'ACTIVE') {
-      await this.authUtils.createAuthAuditLog({
-        performerType: 'ROOT',
+      await this.logAuthEvent({
         performerId: root?.id ?? null,
         action: 'LOGIN_FAILED',
         status: AuditStatus.FAILED,
-        ipAddress: clientIp,
-        userAgent,
-        metadata: {
-          reason: 'USER_NOT_FOUND_OR_INACTIVE',
-          email: dto.email,
-          clientOrigin,
-        },
+        req,
+        metadata: { reason: 'USER_NOT_FOUND_OR_INACTIVE', email: dto.email },
       });
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    // Password verify (throws UnauthorizedException if invalid)
-    try {
-      this.authUtils.verifyPassword(dto.password, root.password);
-    } catch (err) {
-      await this.authUtils.createAuthAuditLog({
-        performerType: 'ROOT',
+    // 🔥 Password verify
+    if (!this.authUtils.verifyPassword(dto.password, root.password)) {
+      await this.logAuthEvent({
         performerId: root.id,
         action: 'LOGIN_FAILED',
         status: AuditStatus.FAILED,
-        ipAddress: clientIp,
-        userAgent,
-        metadata: {
-          reason: 'INVALID_PASSWORD',
-          email: dto.email,
-          clientOrigin,
-        },
+        req,
+        metadata: { reason: 'INVALID_PASSWORD', email: dto.email },
       });
-      throw err;
+      throw new UnauthorizedException('Invalid credentials');
     }
 
-    // Whitelist entries for this Root
+    // 🔥 Whitelist validation
     const whitelist = await this.ipWhitelistService.findRootWhitelist(root.id);
+    const allowedDomains = whitelist.map((w) => w.domainName).filter(Boolean);
+    const allowedIps = whitelist.map((w) => w.serverIp).filter(Boolean);
 
-    const allowedDomains = whitelist
-      .map((w) => w.domainName)
-      .filter((d): d is string => !!d);
-    const allowedIps = whitelist
-      .map((w) => w.serverIp)
-      .filter((ip): ip is string => !!ip);
-
-    // Origin validation
-    if (!this.authUtils.isValidOriginForRoot(clientOrigin, allowedDomains)) {
-      await this.authUtils.createAuthAuditLog({
-        performerType: 'ROOT',
+    if (!this.authUtils.isValidOriginForRoot(origin, allowedDomains)) {
+      await this.logAuthEvent({
         performerId: root.id,
         action: 'LOGIN_FAILED',
         status: AuditStatus.FAILED,
-        ipAddress: clientIp,
-        userAgent,
-        metadata: {
-          reason: 'ORIGIN_NOT_WHITELISTED_FOR_ROOT',
-          clientOrigin,
-          allowedDomains,
-        },
+        req,
+        metadata: { reason: 'ORIGIN_NOT_ALLOWED', origin },
       });
-      throw new ForbiddenException(
-        'Access denied: Origin not whitelisted for Root access',
-      );
+      throw new ForbiddenException('Origin not allowed');
     }
 
-    // IP validation
-    if (!this.authUtils.isValidIpForRoot(clientIp, allowedIps)) {
-      await this.authUtils.createAuthAuditLog({
-        performerType: 'ROOT',
+    if (!this.authUtils.isValidIpForRoot(ip, allowedIps)) {
+      await this.logAuthEvent({
         performerId: root.id,
         action: 'LOGIN_FAILED',
         status: AuditStatus.FAILED,
-        ipAddress: clientIp,
-        userAgent,
-        metadata: {
-          reason: 'IP_NOT_WHITELISTED_FOR_ROOT',
-          clientIp,
-          allowedIps,
-        },
+        req,
+        metadata: { reason: 'IP_NOT_ALLOWED', ip },
       });
-      throw new ForbiddenException(
-        'Access denied: IP address not whitelisted for Root access',
-      );
+      throw new ForbiddenException('IP address not allowed');
     }
 
-    // Build actor + tokens
+    // 🔥 Actor + tokens
     const actor: AuthActor = this.authUtils.createActor({
       id: root.id,
-      principalType: 'ROOT',
       roleId: root.roleId,
+      principalType: 'ROOT',
       isRoot: true,
     });
 
-    const tokens: TokenPair = this.authUtils.generateTokens(actor);
+    const tokens = this.authUtils.generateTokens(actor);
+
+    // 🔐 Refresh token should be hashed before saving!
+    const hashedRefresh = this.authUtils.hashPassword(tokens.refreshToken);
 
     await this.prisma.root.update({
       where: { id: root.id },
       data: {
-        refreshToken: tokens.refreshToken,
+        refreshToken: hashedRefresh,
         lastLoginAt: new Date(),
-        lastLoginIp: clientIp,
-        lastLoginOrigin: clientOrigin,
+        lastLoginIp: ip,
+        lastLoginOrigin: origin,
       },
     });
 
     const permissions =
       await this.permissionService.getEffectivePermissions(actor);
 
-    const safeRoot = this.authUtils.stripSensitive(root, [
-      'password',
-      'refreshToken',
-      'passwordResetToken',
-    ]);
-
-    await this.authUtils.createAuthAuditLog({
-      performerType: 'ROOT',
+    await this.logAuthEvent({
       performerId: root.id,
       action: 'LOGIN_SUCCESS',
       status: AuditStatus.SUCCESS,
-      ipAddress: clientIp,
-      userAgent,
-      metadata: {
-        origin: clientOrigin,
-        hasWhitelist: whitelist.length > 0,
-        allowedDomains,
-      },
+      req,
+      metadata: { origin, hasWhitelist: whitelist.length > 0 },
     });
 
     return {
-      user: safeRoot,
+      user: this.toSafeRoot(root),
       actor,
       tokens,
       permissions,
@@ -200,69 +175,33 @@ export class RootAuthService {
       data: { refreshToken: null },
     });
 
-    const userAgent = this.authUtils.getClientUserAgent(req);
-
-    await this.authUtils.createAuthAuditLog({
-      performerType: 'ROOT',
+    await this.logAuthEvent({
       performerId: rootId,
       action: 'LOGOUT',
       status: AuditStatus.SUCCESS,
-      ipAddress: req ? this.authUtils.getClientIp(req) : null,
-      userAgent: userAgent,
+      req,
     });
 
     return { message: 'Logged out successfully' };
   }
 
-  async refreshToken(dto: RefreshTokenDto, req: Request) {
-    let payload: any;
+  async refreshToken(rawToken: string, req: Request) {
+    const payload = this.authUtils.verifyJwt(rawToken);
 
-    try {
-      payload = (this.authUtils as any)['jwt'].verify(dto.refreshToken);
-    } catch {
-      await this.authUtils.createAuthAuditLog({
-        performerType: 'ROOT',
-        performerId: null,
-        action: 'REFRESH_TOKEN_INVALID',
-        status: AuditStatus.FAILED,
-        ipAddress: req ? this.authUtils.getClientIp(req) : null,
-        userAgent: req ? this.authUtils.getClientUserAgent(req) : null,
-        metadata: { error: 'JWT verify failed' },
-      });
-      throw new UnauthorizedException('Invalid refresh token');
-    }
-
-    if (!payload?.sub || payload.principalType !== 'ROOT') {
-      await this.authUtils.createAuthAuditLog({
-        performerType: 'ROOT',
-        performerId: payload?.sub ?? null,
-        action: 'REFRESH_TOKEN_INVALID',
-        status: AuditStatus.FAILED,
-        ipAddress: req ? this.authUtils.getClientIp(req) : null,
-        userAgent: req ? this.authUtils.getClientUserAgent(req) : null,
-        metadata: { error: 'Invalid payload principalType' },
-      });
-      throw new UnauthorizedException('Invalid refresh token');
+    if (!payload || payload.principalType !== 'ROOT') {
+      throw new UnauthorizedException('Invalid token');
     }
 
     const root = await this.prisma.root.findUnique({
       where: { id: payload.sub },
     });
 
-    if (
-      !root ||
-      root.deletedAt ||
-      root.status !== 'ACTIVE' ||
-      root.refreshToken !== dto.refreshToken
-    ) {
-      await this.authUtils.createAuthAuditLog({
-        performerType: 'ROOT',
+    if (!root || !this.authUtils.verifyPassword(rawToken, root.refreshToken!)) {
+      await this.logAuthEvent({
         performerId: payload.sub,
         action: 'REFRESH_TOKEN_INVALID',
         status: AuditStatus.FAILED,
-        ipAddress: req ? this.authUtils.getClientIp(req) : null,
-        userAgent: req ? this.authUtils.getClientUserAgent(req) : null,
-        metadata: { error: 'Root not found / status / mismatch' },
+        req,
       });
 
       throw new UnauthorizedException('Invalid refresh token');
@@ -277,28 +216,22 @@ export class RootAuthService {
 
     const tokens = this.authUtils.generateTokens(actor);
 
+    const hashedRefresh = this.authUtils.hashPassword(tokens.refreshToken);
+
     await this.prisma.root.update({
       where: { id: root.id },
-      data: { refreshToken: tokens.refreshToken },
+      data: { refreshToken: hashedRefresh },
     });
 
-    const safeRoot = this.authUtils.stripSensitive(root, [
-      'password',
-      'refreshToken',
-      'passwordResetToken',
-    ]);
-
-    await this.authUtils.createAuthAuditLog({
-      performerType: 'ROOT',
+    await this.logAuthEvent({
       performerId: root.id,
       action: 'REFRESH_TOKEN_SUCCESS',
       status: AuditStatus.SUCCESS,
-      ipAddress: req ? this.authUtils.getClientIp(req) : null,
-      userAgent: req ? this.authUtils.getClientUserAgent(req) : null,
+      req,
     });
 
     return {
-      user: safeRoot,
+      user: this.toSafeRoot(root),
       actor,
       tokens,
     };
@@ -309,84 +242,55 @@ export class RootAuthService {
       where: { email: dto.email },
     });
 
-    // Security: don't leak existence
     if (!root) {
-      return {
-        message:
-          'If an account with that email exists, a password reset link has been sent.',
-      };
+      return { message: 'If account exists, password reset email sent.' };
     }
 
     const rawToken = randomBytes(32).toString('hex');
-    const hashed = this.authUtils.hashPassword(rawToken);
-
-    const expires = new Date(Date.now() + 1000 * 60 * 3); // 3 min
+    const hashedToken = this.authUtils.hashResetToken(rawToken);
 
     await this.prisma.root.update({
       where: { id: root.id },
       data: {
-        passwordResetToken: hashed,
-        passwordResetExpires: expires,
+        passwordResetToken: hashedToken,
+        passwordResetExpires: new Date(Date.now() + 3 * 60 * 1000),
       },
     });
 
-    // Use your EmailService to send reset link / token
     await this.emailService.sendPasswordResetEmail({
       firstName: root.firstName,
-      resetUrl: `${process.env.RESET_PASSWORD_BASE_URL}?token=${rawToken}`,
+      supportEmail: root.email,
+      resetUrl: `${this.configService.get<string>('security.resetPasswordBaseUrl')}?token=${rawToken}`,
       expiryMinutes: 3,
     });
 
-    await this.authUtils.createAuthAuditLog({
-      performerType: 'ROOT',
+    await this.logAuthEvent({
       performerId: root.id,
       action: 'PASSWORD_RESET_REQUESTED',
       status: AuditStatus.SUCCESS,
-      ipAddress: req ? this.authUtils.getClientIp(req) : null,
-      userAgent: req ? this.authUtils.getClientUserAgent(req) : null,
-      metadata: {
-        email: dto.email,
-      },
+      req,
     });
 
-    return {
-      message:
-        'If an account with that email exists, a password reset link has been sent.',
-    };
+    return { message: 'If account exists, password reset email sent.' };
   }
 
   async confirmPasswordReset(dto: ConfirmPasswordResetDto, req?: Request) {
-    const { token } = dto;
+    const hashedToken = this.authUtils.hashResetToken(dto.token);
 
-    const candidateRoots = await this.prisma.root.findMany({
+    const root = await this.prisma.root.findFirst({
       where: {
-        passwordResetToken: { not: null },
+        passwordResetToken: hashedToken,
         passwordResetExpires: { gt: new Date() },
       },
     });
 
-    const matching = candidateRoots.find((root) => {
-      try {
-        this.authUtils.verifyPassword(token, root.passwordResetToken!);
-        return true;
-      } catch {
-        return false;
-      }
-    });
-
-    if (!matching) {
-      await this.authUtils.createAuthAuditLog({
-        performerType: 'ROOT',
+    if (!root) {
+      await this.logAuthEvent({
         performerId: null,
-        action: 'PASSWORD_RESET_CONFIRMATION_FAILED',
+        action: 'PASSWORD_RESET_FAILED',
         status: AuditStatus.FAILED,
-        ipAddress: req ? this.authUtils.getClientIp(req) : null,
-        userAgent: req ? this.authUtils.getClientUserAgent(req) : null,
-        metadata: {
-          reason: 'INVALID_OR_EXPIRED_TOKEN',
-        },
+        req,
       });
-
       throw new BadRequestException('Invalid or expired token');
     }
 
@@ -394,100 +298,68 @@ export class RootAuthService {
     const newHashed = this.authUtils.hashPassword(newPasswordPlain);
 
     await this.prisma.root.update({
-      where: { id: matching.id },
+      where: { id: root.id },
       data: {
         password: newHashed,
+        refreshToken: null,
         passwordResetToken: null,
         passwordResetExpires: null,
-        refreshToken: null,
       },
     });
 
-    // Email new credentials to root (similar to old sendCredentialsEmail)
     await this.emailService.sendRootUserCredentialsEmail({
-      firstName: matching.firstName,
-      username: matching.username,
-      email: matching.email,
+      firstName: root.firstName,
+      username: root.username,
+      email: root.email,
       password: newPasswordPlain,
       actionType: 'reset',
     });
 
-    await this.authUtils.createAuthAuditLog({
-      performerType: 'ROOT',
-      performerId: matching.id,
+    await this.logAuthEvent({
+      performerId: root.id,
       action: 'PASSWORD_RESET_CONFIRMED',
       status: AuditStatus.SUCCESS,
-      ipAddress: req ? this.authUtils.getClientIp(req) : null,
-      userAgent: req ? this.authUtils.getClientUserAgent(req) : null,
+      req,
     });
 
-    return {
-      message: 'Password reset successfully. New password has been issued.',
-    };
+    return { message: 'Password reset successful. New password sent.' };
   }
 
   async getCurrentUser(rootId: string) {
     const root = await this.prisma.root.findUnique({
       where: { id: rootId },
-      include: {
-        role: true,
-      },
+      include: { role: true },
     });
 
-    if (!root) {
-      throw new NotFoundException('Root user not found');
-    }
+    if (!root) throw new NotFoundException('Root user not found');
 
-    const safeRoot = this.authUtils.stripSensitive(root, [
-      'password',
-      'refreshToken',
-      'passwordResetToken',
-    ]);
-
-    return safeRoot;
+    return this.toSafeRoot(root);
   }
 
   async getDashboard(rootId: string, req?: Request) {
-    const [totalAdmins, totalUsers, totalEmployees] = await Promise.all([
+    const [admins, users, employees] = await Promise.all([
       this.prisma.user.count({
-        where: {
-          rootParentId: rootId,
-          role: {
-            name: 'ADMIN',
-          },
-        },
+        where: { rootParentId: rootId, role: { name: 'ADMIN' } },
       }),
       this.prisma.user.count({
-        where: {
-          rootParentId: rootId,
-          role: {
-            NOT: { name: 'ADMIN' },
-          },
-        },
+        where: { rootParentId: rootId, role: { NOT: { name: 'ADMIN' } } },
       }),
       this.prisma.employee.count({
-        where: {
-          createdByRootId: rootId,
-        },
+        where: { createdByRootId: rootId },
       }),
     ]);
 
-    await this.authUtils.createAuthAuditLog({
-      performerType: 'ROOT',
+    await this.logAuthEvent({
       performerId: rootId,
       action: 'DASHBOARD_ACCESSED',
       status: AuditStatus.SUCCESS,
-      ipAddress: req ? this.authUtils.getClientIp(req) : null,
-      userAgent: req ? this.authUtils.getClientUserAgent(req) : null,
-      metadata: {
-        dashboardType: 'ROOT_DASHBOARD',
-      },
+      req,
     });
 
     return {
-      totalAdmins,
-      totalBusinessUsers: totalUsers,
-      totalEmployees,
+      totalAdmins: admins,
+      totalBusinessUsers: users,
+      totalEmployees: employees,
     };
   }
 
@@ -502,15 +374,13 @@ export class RootAuthService {
 
     if (!root) throw new NotFoundException('Root user not found');
 
-    if (!dto.newPassword) {
-      throw new BadRequestException('New password is required');
+    if (!dto.newPassword || !dto.currentPassword) {
+      throw new BadRequestException('Current & new password required');
     }
 
-    if (!dto.currentPassword) {
-      throw new BadRequestException('Current password is required');
+    if (!this.authUtils.verifyPassword(dto.currentPassword, root.password)) {
+      throw new UnauthorizedException('Invalid current password');
     }
-
-    this.authUtils.verifyPassword(dto.currentPassword, root.password);
 
     const newHashed = this.authUtils.hashPassword(dto.newPassword);
 
@@ -518,21 +388,16 @@ export class RootAuthService {
       where: { id: root.id },
       data: {
         password: newHashed,
-        refreshToken: null,
+        refreshToken: null, // logout from all devices
       },
     });
 
-    await this.authUtils.createAuthAuditLog({
-      performerType: 'ROOT',
+    await this.logAuthEvent({
       performerId: rootId,
       action: 'CREDENTIALS_UPDATED',
       status: AuditStatus.SUCCESS,
-      ipAddress: req ? this.authUtils.getClientIp(req) : null,
-      userAgent: req ? this.authUtils.getClientUserAgent(req) : null,
-      metadata: {
-        updatedFields: ['password'],
-        isOwnUpdate: true,
-      },
+      req,
+      metadata: { updatedFields: ['password'] },
     });
 
     return { message: 'Credentials updated successfully' };
@@ -553,21 +418,14 @@ export class RootAuthService {
       email: dto.email ?? root.email,
     };
 
-    await this.prisma.root.update({
-      where: { id: rootId },
-      data,
-    });
+    await this.prisma.root.update({ where: { id: rootId }, data });
 
-    await this.authUtils.createAuthAuditLog({
-      performerType: 'ROOT',
+    await this.logAuthEvent({
       performerId: rootId,
       action: 'PROFILE_UPDATED',
       status: AuditStatus.SUCCESS,
-      ipAddress: req ? this.authUtils.getClientIp(req) : null,
-      userAgent: req ? this.authUtils.getClientUserAgent(req) : null,
-      metadata: {
-        updatedFields: Object.keys(data),
-      },
+      req,
+      metadata: { updatedFields: Object.keys(data) },
     });
 
     return this.getCurrentUser(rootId);
@@ -578,9 +436,7 @@ export class RootAuthService {
     file: Express.Multer.File,
     req?: Request,
   ) {
-    if (!file) {
-      throw new BadRequestException('Profile image is required');
-    }
+    if (!file) throw new BadRequestException('Profile image required');
 
     const root = await this.prisma.root.findUnique({
       where: { id: rootId },
@@ -588,12 +444,11 @@ export class RootAuthService {
 
     if (!root) throw new NotFoundException('Root user not found');
 
-    const oldImage = root.profileImage ?? null;
+    const oldImage = root.profileImage;
 
-    const uploadedUrl = await this.s3.upload(file.path, 'profile');
-    if (!uploadedUrl) {
-      throw new BadRequestException('Failed to upload profile image');
-    }
+    const uploadedUrl = await this.s3.uploadBuffer(file, 'root-profile-images');
+
+    if (!uploadedUrl) throw new BadRequestException('Upload failed');
 
     if (oldImage) {
       await this.s3.delete({ fileUrl: oldImage }).catch(() => null);
@@ -601,26 +456,17 @@ export class RootAuthService {
 
     await this.prisma.root.update({
       where: { id: rootId },
-      data: {
-        profileImage: uploadedUrl,
-      },
+      data: { profileImage: uploadedUrl },
     });
 
-    // === Delete local temp file safely using FileDeleteHelper ===
     FileDeleteHelper.deleteUploadedImages(file);
 
-    // === Audit log ===
-    await this.authUtils.createAuthAuditLog({
-      performerType: 'ROOT',
+    await this.logAuthEvent({
       performerId: rootId,
       action: 'PROFILE_IMAGE_UPDATED',
       status: AuditStatus.SUCCESS,
-      ipAddress: req ? this.authUtils.getClientIp(req) : null,
-      userAgent: req ? this.authUtils.getClientUserAgent(req) : null,
-      metadata: {
-        oldImageDeleted: !!oldImage,
-        originalFilename: file.originalname,
-      },
+      req,
+      metadata: { oldImageDeleted: !!oldImage },
     });
 
     return this.getCurrentUser(rootId);

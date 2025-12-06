@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { CreateStateDto } from '../dto/create-state.dto.js';
-import { UpdateStateDto } from '../dto/update-state.dto.js';
+import { CreateStateDto } from '../dto/create-state.dto'
+import { UpdateStateDto } from '../dto/update-state.dto'
 
 @Injectable()
 export class StateService {

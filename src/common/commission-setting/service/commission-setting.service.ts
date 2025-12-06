@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { CreateCommissionSettingDto } from '../dto/create-commission-setting.dto.js';
-import { UpdateCommissionSettingDto } from '../dto/update-commission-setting.dto.js';
+import { CreateCommissionSettingDto } from '../dto/create-commission-setting.dto'
+import { UpdateCommissionSettingDto } from '../dto/update-commission-setting.dto'
 
 @Injectable()
 export class CommissionSettingService {

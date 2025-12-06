@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { RootCommissionEarningService } from './service/root-commission-earning.service.js';
+import { RootCommissionEarningService } from './service/root-commission-earning.service'
 
 @Module({
   providers: [RootCommissionEarningService],

@@ -1,19 +1,7 @@
 import { PrismaMariaDb } from '@prisma/adapter-mariadb';
 import { PrismaClient } from '../generated/prisma/client';
 import type { Role } from '../generated/prisma/client';
-import { pbkdf2Sync, randomBytes } from 'crypto';
-
-// Hash password function
-export function hashPassword(password: string): string {
-  const salt = randomBytes(16);
-  const iterations = 100000;
-  const keylen = 64;
-  const digest = 'sha512';
-
-  const hash = pbkdf2Sync(password, salt, iterations, keylen, digest);
-
-  return `${iterations}:${salt.toString('hex')}:${hash.toString('hex')}`;
-}
+import { AuthUtilsService } from '../src/auth/helper/auth-utils';
 
 // Generate unique customer ID
 function generateCustomerId(): string {
@@ -34,8 +22,8 @@ const prisma = new PrismaClient({ adapter });
 async function main() {
   console.log('\n🌱 Starting Prisma Seed...\n');
 
-  const rootPassword = hashPassword('Root@123');
-  const adminPassword = hashPassword('Admin@123');
+  const rootPassword = AuthUtilsService.hashPasswordforSeed('Root@123');
+  const adminPassword = AuthUtilsService.hashPasswordforSeed('Admin@123');
 
   // ========================================
   // 1️⃣ CREATE ROOT USER WITH NULL ROLE FIRST
@@ -48,7 +36,7 @@ async function main() {
       username: 'root',
       firstName: 'Super',
       lastName: 'Admin',
-      email: 'root@system.com',
+      email: 'azunisoftware18@gmail.com',
       phoneNumber: '9999999990',
       password: rootPassword,
       status: 'ACTIVE',

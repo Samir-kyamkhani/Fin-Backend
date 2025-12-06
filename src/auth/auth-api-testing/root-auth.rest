@@ -1,25 +1,12 @@
-# ============================
-# ENVIRONMENT
-# ============================
-
 @dev = http://localhost:9000
 @baseUrl = {{dev}}/api/v1
 
-@accessToken =
-@refreshToken =
-
-
-# ============================
-# HEALTH CHECK
-# ============================
+@accessToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIzNDFmNWM4ZS02N2E5LTRkM2MtYjIyZi02YjZiMWRlODBlMjYiLCJwcmluY2lwYWxUeXBlIjoiUk9PVCIsInJvbGVJZCI6ImYwYTI2Zjg5LWE3Y2MtNDQ2NC1hZjU5LTQ1ZWRmYjA2ZDI2ZiIsImlzUm9vdCI6dHJ1ZSwiaWF0IjoxNzY1MDAxNDA2LCJleHAiOjE3NjUwMDUwMDZ9.52T0lc9e572k7S10FUD1cUbMhzmZQxhUJap3FxflyJ0
+@refreshToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIzNDFmNWM4ZS02N2E5LTRkM2MtYjIyZi02YjZiMWRlODBlMjYiLCJwcmluY2lwYWxUeXBlIjoiUk9PVCIsInJvbGVJZCI6ImYwYTI2Zjg5LWE3Y2MtNDQ2NC1hZjU5LTQ1ZWRmYjA2ZDI2ZiIsImlzUm9vdCI6dHJ1ZSwiaWF0IjoxNzY1MDAxNDA2LCJleHAiOjE3Njc1OTM0MDZ9.HUt3hC5we_o78VgKIFEbwcGsVRuya10e9apTyhAa13I
 
 
 ### HEALTH CHECK
 GET {{baseUrl}}/health
-
-# ============================
-# AUTH
-# ============================
 
 
 ### ROOT LOGIN
@@ -39,16 +26,7 @@ Authorization: Bearer {{accessToken}}
 
 ### REFRESH TOKEN
 POST {{baseUrl}}/root/auth/refresh-token
-Content-Type: application/json
-
-{
-  "refreshToken": "{{refreshToken}}"
-}
-
-
-# ============================
-# USER PROFILE
-# ============================
+Cookie: refresh_token={{refreshToken}}
 
 
 ### ME
@@ -99,11 +77,6 @@ Content-Type: image/jpeg
 ------Form--
 
 
-# ============================
-# PASSWORD RESET
-# ============================
-
-
 ### REQUEST PASSWORD RESET
 POST {{baseUrl}}/root/auth/request-password-reset
 Content-Type: application/json
@@ -118,5 +91,5 @@ POST {{baseUrl}}/root/auth/confirm-password-reset
 Content-Type: application/json
 
 {
-  "token": "your-token-here"
+  "token": "your-token-hhere"
 }

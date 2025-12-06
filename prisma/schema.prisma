@@ -21,7 +21,7 @@ model Root {
   password             String
   status               UserStatus @default(ACTIVE)
   refreshToken         String?    @map("refresh_token") @db.Text
-  passwordResetToken   String?    @map("password_reset_token")
+  passwordResetToken   String?    @map("password_reset_token") @db.Text
   passwordResetExpires DateTime?  @map("password_reset_expires")
   lastLoginAt          DateTime?  @map("last_login_at")
   lastLoginIp          String?    @map("last_login_ip_at")
@@ -74,7 +74,7 @@ model Employee {
   departmentId         String         @map("department_id")
   status               EmployeeStatus @default(ACTIVE)
   refreshToken         String?        @map("refresh_token") @db.Text
-  passwordResetToken   String?        @map("password_reset_token")
+  passwordResetToken   String?        @map("password_reset_token") @db.Text
   passwordResetExpires DateTime?      @map("password_reset_expires")
   lastLoginAt          DateTime?      @map("last_login_at")
   hierarchyLevel       Int            @default(0) @map("hierarchy_level")
@@ -120,7 +120,7 @@ model User {
   isKycVerified                 Boolean    @default(false) @map("is_kyc_verified")
   roleId                        String     @map("role_id")
   refreshToken                  String?    @map("refresh_token") @db.Text
-  passwordResetToken            String?    @map("password_reset_token")
+  passwordResetToken            String?    @map("password_reset_token") @db.Text
   passwordResetExpires          DateTime?  @map("password_reset_expires")
   emailVerificationToken        String?    @map("email_verification_token")
   emailVerifiedAt               DateTime?  @map("email_verified_at")

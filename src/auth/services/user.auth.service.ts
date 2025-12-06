@@ -4,17 +4,16 @@ import {
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
-import { PrismaService } from '../../database/database.connection.js';
-import { PermissionService } from '../permission-registry/permission.service.js';
-import { RefreshTokenDto } from '../dto/refresh-token-auth.dto.js';
-import { ForgotPasswordDto } from '../dto/forgot-password-auth.dto.js';
-import { ConfirmPasswordResetDto } from '../dto/confirm-password-reset-auth.dto.js';
-import { UpdateCredentialsDto } from '../dto/update-credentials-auth.dto.js';
-import { UpdateProfileDto } from '../dto/update-profile-auth.dto.js';
-import { TokenPair } from '../interface/auth.interface.js';
+import { PrismaService } from '../../database/database.connection'
+import { PermissionService } from '../permission-registry/permission.service'
+import { ForgotPasswordDto } from '../dto/forgot-password-auth.dto'
+import { ConfirmPasswordResetDto } from '../dto/confirm-password-reset-auth.dto'
+import { UpdateCredentialsDto } from '../dto/update-credentials-auth.dto'
+import { UpdateProfileDto } from '../dto/update-profile-auth.dto'
+import { TokenPair } from '../interface/auth.interface'
 import { randomBytes } from 'node:crypto';
-import { AuthUtilsService } from '../helper/auth-utils.js';
-import { LoginDto } from '../dto/login-auth.dto.js';
+import { AuthUtilsService } from '../helper/auth-utils'
+import { LoginDto } from '../dto/login-auth.dto'
 
 @Injectable()
 export class UserAuthService {
@@ -82,10 +81,10 @@ export class UserAuthService {
     return { message: 'Logged out successfully' };
   }
 
-  async refreshToken(dto: RefreshTokenDto) {
+  async refreshToken(rawToken: string) {
     let payload: any;
     try {
-      payload = this.authUtils['jwt'].verify(dto.refreshToken);
+      payload = this.authUtils['jwt'].verify(rawToken);
     } catch {
       throw new UnauthorizedException('Invalid refresh token');
     }
@@ -102,7 +101,7 @@ export class UserAuthService {
       !user ||
       user.deletedAt ||
       user.status !== 'ACTIVE' ||
-      user.refreshToken !== dto.refreshToken
+      user.refreshToken !== rawToken
     ) {
       throw new UnauthorizedException('Invalid refresh token');
     }

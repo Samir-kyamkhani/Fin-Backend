@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { DepartmentPermissionService } from './service/department-permission.service.js';
+import { DepartmentPermissionService } from './service/department-permission.service'
 
 @Module({
   imports: [],
