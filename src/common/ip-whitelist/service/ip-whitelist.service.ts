@@ -1,25 +1,34 @@
 import {
   Injectable,
   ConflictException,
-  BadRequestException,
   UnauthorizedException,
   NotFoundException,
   InternalServerErrorException,
 } from '@nestjs/common';
 import { PrismaService } from '../../../database/database.connection';
-import { CreateIpWhitelistDto } from '../dto/create-ip-whitelist.dto';
+
 import {
-  IpWhitelistCreateFields,
-  // IpWhitelistFilter,
-  IpWhitelistType,
-  IpWhitelistUpdateFields,
+  IpWhitelistUserType,
+  IpWhitelistRootType,
+  IpWhitelistCreateUserFields,
+  IpWhitelistCreateRootFields,
+  IpWhitelistUpdateUserFields,
+  IpWhitelistUpdateRootFields,
+  IpWhitelistRootTypeMap,
 } from '../types/ip-whitelist.type';
-import { UpdateIpWhitelistDto } from '../dto/update-ip-whitelist.dto';
+
+import { CreateUserIpWhitelistDto } from '../dto/create-user-ip-whitelist.dto';
+import { CreateRootIpWhitelistDto } from '../dto/create-root-ip-whitelist.dto';
+import { UpdateUserIpWhitelistDto } from '../dto/update-user-ip-whitelist.dto';
+import { UpdateRootIpWhitelistDto } from '../dto/update-root-ip-whitelist.dto';
+
 import { AuditLogService } from '../../audit-log/service/audit-log.service';
 import { AuditStatus } from '../../audit-log/enums/audit-log.enum';
 import { CreateAuditLogDto } from '../../audit-log/dto/create-audit-log.dto';
-import { AuthActor } from '../../../auth/types/principal.type';
+
 import { Prisma } from '../../../../generated/prisma/client';
+import { AuthActor } from '../../../auth/interface/auth.interface';
+import { IpWhitelist } from '../../../../generated/prisma/browser';
 
 @Injectable()
 export class IpWhitelistService {
@@ -28,292 +37,324 @@ export class IpWhitelistService {
     private readonly audit: AuditLogService,
   ) {}
 
-  /** CREATE */
-  async create(
-    dto: CreateIpWhitelistDto,
-    currentUser: AuthActor,
-  ): Promise<IpWhitelistType> {
+  private ensureUser(currentUser: AuthActor) {
     if (!currentUser) throw new UnauthorizedException('Invalid user');
+  }
 
+  private async validateRole(currentUser: AuthActor) {
+    const role = await this.prisma.role.findUnique({
+      where: { id: currentUser.roleId! },
+    });
+    if (!role) throw new NotFoundException('Role not found');
+    return role;
+  }
+
+  private mapUser(row: IpWhitelist): IpWhitelistUserType {
+    return {
+      id: row.id,
+      domainName: row.domainName,
+      serverIp: row.serverIp,
+      userId: row.userId as string,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+    };
+  }
+
+  private mapRoot(row: {
+    domainName: string;
+    serverIp: string;
+  }): IpWhitelistRootTypeMap {
+    return {
+      domainName: row.domainName,
+      serverIp: row.serverIp,
+    };
+  }
+
+  private mapFullDataRoot(row: IpWhitelist): IpWhitelistRootType {
+    return {
+      id: row.id,
+      domainName: row.domainName,
+      serverIp: row.serverIp,
+      rootId: row.rootId as string,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+    };
+  }
+
+  private async auditLog(data: CreateAuditLogDto) {
+    return this.audit.create(data);
+  }
+
+  async createForUser(
+    dto: CreateUserIpWhitelistDto,
+    currentUser: AuthActor,
+  ): Promise<IpWhitelistUserType> {
+    this.ensureUser(currentUser);
     const role = await this.validateRole(currentUser);
 
     try {
-      const existing = await this.prisma.ipWhitelist.findFirst({
-        where: { domainName: dto.domainName },
+      const exists = await this.prisma.ipWhitelist.findFirst({
+        where: { domainName: dto.domainName, userId: dto.userId },
       });
 
-      if (existing) {
-        await this.audit.create({
+      if (exists) {
+        await this.auditLog({
           performerType: role.name,
           performerId: currentUser.id,
           targetUserType: 'USER',
           targetUserId: dto.userId,
-          action: 'CREATE_IP_WHITELIST',
-          description: 'Duplicate IP whitelist domain detected',
+          action: 'CREATE_USER_WHITELIST',
+          description: 'Duplicate domain for user',
           resourceType: 'IpWhitelist',
-          resourceId: existing.id,
+          resourceId: exists.id,
           status: AuditStatus.FAILED,
           metadata: { reason: 'Duplicate domainName' },
-        } satisfies CreateAuditLogDto);
-
+        });
         throw new ConflictException('domainName already exists');
       }
 
-      const data: IpWhitelistCreateFields = {
+      const data: IpWhitelistCreateUserFields = {
         domainName: dto.domainName,
         serverIp: dto.serverIp,
         userId: dto.userId,
-        rootId: dto.rootId ?? null,
       };
 
       const created = await this.prisma.ipWhitelist.create({ data });
 
-      await this.audit.create({
+      await this.auditLog({
         performerType: role.name,
         performerId: currentUser.id,
         targetUserType: 'USER',
         targetUserId: dto.userId,
-        action: 'CREATE_IP_WHITELIST',
-        description: 'Created IP whitelist entry',
+        action: 'CREATE_USER_WHITELIST',
+        description: 'Created user whitelist entry',
         resourceType: 'IpWhitelist',
         resourceId: created.id,
-        newData: { ...created },
+        newData: created,
         status: AuditStatus.SUCCESS,
-      } satisfies CreateAuditLogDto);
+      });
 
-      return created as IpWhitelistType;
-    } catch (err: unknown) {
-      const message =
-        err instanceof Error ? err.message : 'Failed to create ip whitelist';
-
-      throw new InternalServerErrorException(message);
+      return this.mapUser(created);
+    } catch (err) {
+      throw new InternalServerErrorException(
+        err instanceof Error ? err.message : 'Failed to create whitelist',
+      );
     }
   }
 
-  /** FIND ALL */
+  async createForRoot(
+    dto: CreateRootIpWhitelistDto,
+    currentUser: AuthActor,
+  ): Promise<IpWhitelistRootType> {
+    this.ensureUser(currentUser);
+    const role = await this.validateRole(currentUser);
+
+    try {
+      const exists = await this.prisma.ipWhitelist.findFirst({
+        where: { domainName: dto.domainName, rootId: dto.rootId },
+      });
+
+      if (exists) {
+        await this.auditLog({
+          performerType: role.name,
+          performerId: currentUser.id,
+          targetUserType: 'ROOT',
+          targetUserId: dto.rootId,
+          action: 'CREATE_ROOT_WHITELIST',
+          description: 'Duplicate domain for root',
+          resourceType: 'IpWhitelist',
+          resourceId: exists.id,
+          status: AuditStatus.FAILED,
+          metadata: { reason: 'Duplicate domainName' },
+        });
+        throw new ConflictException('domainName already exists');
+      }
+
+      const data: IpWhitelistCreateRootFields = {
+        domainName: dto.domainName,
+        serverIp: dto.serverIp,
+        rootId: dto.rootId,
+      };
+
+      const created = await this.prisma.ipWhitelist.create({ data });
+
+      await this.auditLog({
+        performerType: role.name,
+        performerId: currentUser.id,
+        targetUserType: 'ROOT',
+        targetUserId: dto.rootId,
+        action: 'CREATE_ROOT_WHITELIST',
+        description: 'Created root whitelist entry',
+        resourceType: 'IpWhitelist',
+        resourceId: created.id,
+        newData: created,
+        status: AuditStatus.SUCCESS,
+      });
+
+      return this.mapFullDataRoot(created);
+    } catch (err) {
+      throw new InternalServerErrorException(
+        err instanceof Error ? err.message : 'Failed to create whitelist',
+      );
+    }
+  }
+
   async findAll(filters?: {
     userId?: string;
+    rootId?: string;
     search?: string;
-  }): Promise<IpWhitelistType[]> {
+  }) {
     const where: Prisma.IpWhitelistWhereInput = {};
 
-    // Filter by userId
-    if (filters?.userId) {
-      where.userId = filters.userId;
-    }
+    if (filters?.userId) where.userId = filters.userId;
+    if (filters?.rootId) where.rootId = filters.rootId;
 
-    // Global search
     if (filters?.search) {
       const q = filters.search;
-
       where.OR = [
         { domainName: { contains: q } },
         { serverIp: { contains: q } },
-        {
-          user: {
-            firstName: { contains: q },
-          },
-        },
-        {
-          user: {
-            lastName: { contains: q },
-          },
-        },
       ];
     }
 
-    return await this.prisma.ipWhitelist.findMany({
+    return this.prisma.ipWhitelist.findMany({
       where,
-      include: {
-        user: true,
-      },
       orderBy: { createdAt: 'desc' },
     });
   }
 
-  /** FIND ONE */
-  async findByUserId(params: {
-    rootId?: string;
-    userId?: string;
-  }): Promise<IpWhitelistType> {
-    const { rootId, userId } = params;
+  async findUserWhitelist(userId: string): Promise<IpWhitelistUserType> {
+    const row = await this.prisma.ipWhitelist.findFirst({ where: { userId } });
+    if (!row) throw new NotFoundException('User whitelist not found');
+    return this.mapUser(row);
+  }
 
-    if (!rootId || !userId) {
-      throw new BadRequestException('Either rootId or userId is required');
-    }
-
-    const where: Prisma.IpWhitelistWhereInput = {};
-
-    if (rootId) where.rootId = rootId;
-    if (userId) where.userId = userId;
-
-    const found = await this.prisma.ipWhitelist.findFirst({
-      where,
+  async findRootWhitelist(rootId: string): Promise<IpWhitelistRootTypeMap[]> {
+    const row = await this.prisma.ipWhitelist.findMany({
+      where: { rootId },
+      select: {
+        domainName: true,
+        serverIp: true,
+      },
     });
 
-    if (!found) {
-      throw new NotFoundException('IpWhitelist not found');
-    }
+    if (!row.length) throw new NotFoundException('Root whitelist not found');
 
-    return found as IpWhitelistType;
+    return row.map((r) => this.mapRoot(r));
   }
 
-  /** UPDATE */
-  async update(
+  async updateForUser(
     id: string,
-    dto: UpdateIpWhitelistDto,
+    dto: UpdateUserIpWhitelistDto,
     currentUser: AuthActor,
-  ): Promise<IpWhitelistType> {
-    if (!currentUser) throw new UnauthorizedException('Invalid user');
-    if (!id) throw new BadRequestException('id is required');
-
+  ): Promise<IpWhitelistUserType> {
+    this.ensureUser(currentUser);
     const role = await this.validateRole(currentUser);
 
-    try {
-      const existing = await this.prisma.ipWhitelist.findUnique({
-        where: { id },
+    const row = await this.prisma.ipWhitelist.findUnique({ where: { id } });
+    if (!row || !row.userId)
+      throw new NotFoundException('User whitelist not found');
+
+    if (dto.domainName) {
+      const duplicate = await this.prisma.ipWhitelist.findFirst({
+        where: {
+          domainName: dto.domainName,
+          userId: row.userId,
+          NOT: { id },
+        },
       });
-
-      if (!existing) {
-        await this.audit.create({
-          performerType: role.name,
-          performerId: currentUser.id,
-          targetUserType: 'USER',
-          targetUserId: id,
-          action: 'UPDATE_IP_WHITELIST',
-          description: 'IP whitelist not found for update',
-          resourceType: 'IpWhitelist',
-          resourceId: id,
-          status: AuditStatus.FAILED,
-          metadata: { reason: 'NotFound' },
-        } satisfies CreateAuditLogDto);
-
-        throw new NotFoundException('IpWhitelist not found');
-      }
-
-      if (dto.domainName && dto.domainName !== existing.domainName) {
-        const duplicate = await this.prisma.ipWhitelist.findFirst({
-          where: {
-            domainName: dto.domainName,
-            NOT: { id },
-          },
-        });
-
-        if (duplicate) {
-          await this.audit.create({
-            performerType: role.name,
-            performerId: currentUser.id,
-            targetUserType: 'USER',
-            targetUserId: existing.userId,
-            action: 'UPDATE_IP_WHITELIST',
-            description: 'Duplicate domainName detected on update',
-            resourceType: 'IpWhitelist',
-            resourceId: id,
-            status: AuditStatus.FAILED,
-            metadata: { reason: 'Duplicate domainName' },
-          } satisfies CreateAuditLogDto);
-
-          throw new ConflictException('domainName already exists');
-        }
-      }
-
-      const updateData: IpWhitelistUpdateFields = {};
-      if (dto.domainName !== undefined) updateData.domainName = dto.domainName;
-      if (dto.serverIp !== undefined) updateData.serverIp = dto.serverIp;
-      if (dto.userId !== undefined) updateData.userId = dto.userId;
-      if (dto.rootId !== undefined) updateData.rootId = dto.rootId;
-
-      const updated = await this.prisma.ipWhitelist.update({
-        where: { id },
-        data: updateData,
-      });
-
-      await this.audit.create({
-        performerType: role.name,
-        performerId: currentUser.id,
-        targetUserType: 'USER',
-        targetUserId: existing.userId,
-        action: 'UPDATE_IP_WHITELIST',
-        description: 'Updated IP whitelist entry',
-        resourceType: 'IpWhitelist',
-        resourceId: id,
-        oldData: { ...existing },
-        newData: { ...updateData },
-        status: AuditStatus.SUCCESS,
-      } satisfies CreateAuditLogDto);
-
-      return updated as IpWhitelistType;
-    } catch (err: any) {
-      const message =
-        err instanceof Error ? err.message : 'Failed to update ip whitelist';
-
-      throw new InternalServerErrorException(message);
+      if (duplicate) throw new ConflictException('domainName already exists');
     }
+
+    const updated = await this.prisma.ipWhitelist.update({
+      where: { id },
+      data: dto as IpWhitelistUpdateUserFields,
+    });
+
+    await this.auditLog({
+      performerType: role.name,
+      performerId: currentUser.id,
+      targetUserType: 'USER',
+      targetUserId: row.userId,
+      action: 'UPDATE_USER_WHITELIST',
+      description: 'Updated user whitelist entry',
+      resourceType: 'IpWhitelist',
+      resourceId: id,
+      oldData: row,
+      newData: updated,
+      status: AuditStatus.SUCCESS,
+    });
+
+    return this.mapUser(updated);
   }
 
-  /** REMOVE */
+  async updateForRoot(
+    id: string,
+    dto: UpdateRootIpWhitelistDto,
+    currentUser: AuthActor,
+  ): Promise<IpWhitelistRootType> {
+    this.ensureUser(currentUser);
+    const role = await this.validateRole(currentUser);
+
+    const row = await this.prisma.ipWhitelist.findUnique({ where: { id } });
+    if (!row || !row.rootId)
+      throw new NotFoundException('Root whitelist not found');
+
+    if (dto.domainName) {
+      const duplicate = await this.prisma.ipWhitelist.findFirst({
+        where: {
+          domainName: dto.domainName,
+          rootId: row.rootId,
+          NOT: { id },
+        },
+      });
+      if (duplicate) throw new ConflictException('domainName already exists');
+    }
+
+    const updated = await this.prisma.ipWhitelist.update({
+      where: { id },
+      data: dto as IpWhitelistUpdateRootFields,
+    });
+
+    await this.auditLog({
+      performerType: role.name,
+      performerId: currentUser.id,
+      targetUserType: 'ROOT',
+      targetUserId: row.rootId,
+      action: 'UPDATE_ROOT_WHITELIST',
+      description: 'Updated root whitelist entry',
+      resourceType: 'IpWhitelist',
+      resourceId: id,
+      oldData: row,
+      newData: updated,
+      status: AuditStatus.SUCCESS,
+    });
+
+    return this.mapFullDataRoot(updated);
+  }
+
   async remove(id: string, currentUser: AuthActor): Promise<{ id: string }> {
-    if (!currentUser) throw new UnauthorizedException('Invalid user');
-    if (!id) throw new BadRequestException('id is required');
-
+    this.ensureUser(currentUser);
     const role = await this.validateRole(currentUser);
 
-    try {
-      const existing = await this.prisma.ipWhitelist.findUnique({
-        where: { id },
-      });
+    const row = await this.prisma.ipWhitelist.findUnique({ where: { id } });
+    if (!row) throw new NotFoundException('Whitelist not found');
 
-      if (!existing) {
-        await this.audit.create({
-          performerType: role.name,
-          performerId: currentUser.id,
-          targetUserType: 'USER',
-          targetUserId: id,
-          action: 'DELETE_IP_WHITELIST',
-          description: 'IP whitelist not found for delete',
-          resourceType: 'IpWhitelist',
-          resourceId: id,
-          status: AuditStatus.FAILED,
-          metadata: { reason: 'NotFound' },
-        } satisfies CreateAuditLogDto);
+    await this.prisma.ipWhitelist.delete({ where: { id } });
 
-        throw new NotFoundException('IpWhitelist not found');
-      }
+    await this.auditLog({
+      performerType: role.name,
+      performerId: currentUser.id,
+      targetUserType: row.userId ? 'USER' : 'ROOT',
+      targetUserId: (row.userId ?? row.rootId) as string,
+      action: 'DELETE_WHITELIST',
+      description: 'Deleted whitelist entry',
+      resourceType: 'IpWhitelist',
+      resourceId: id,
+      oldData: row,
+      status: AuditStatus.SUCCESS,
+    });
 
-      await this.prisma.ipWhitelist.delete({ where: { id } });
-
-      await this.audit.create({
-        performerType: role.name,
-        performerId: currentUser.id,
-        targetUserType: 'USER',
-        targetUserId: existing.userId,
-        action: 'DELETE_IP_WHITELIST',
-        description: 'Deleted IP whitelist entry',
-        resourceType: 'IpWhitelist',
-        resourceId: id,
-        oldData: { ...existing },
-        status: AuditStatus.SUCCESS,
-      } satisfies CreateAuditLogDto);
-
-      return { id };
-    } catch (err: any) {
-      const message =
-        err instanceof Error ? err.message : 'Failed to delete ip whitelist';
-
-      throw new InternalServerErrorException(message);
-    }
-  }
-
-  /** ROLE VALIDATION */
-  private async validateRole(currentUser: AuthActor) {
-    const roleId = currentUser.roleId;
-    if (!roleId) throw new BadRequestException('Invalid user role');
-
-    const role = await this.prisma.role.findFirst({ where: { id: roleId } });
-    if (!role) {
-      throw new NotFoundException(`Role not found for roleId=${roleId}`);
-    }
-
-    return role;
+    return { id };
   }
 }

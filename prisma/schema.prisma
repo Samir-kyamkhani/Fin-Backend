@@ -19,12 +19,13 @@ model Root {
   email                String     @unique
   phoneNumber          String     @unique @map("phone_number")
   password             String
-  passwordSalt         String?    @map("password_salt")
   status               UserStatus @default(ACTIVE)
   refreshToken         String?    @map("refresh_token") @db.Text
   passwordResetToken   String?    @map("password_reset_token")
   passwordResetExpires DateTime?  @map("password_reset_expires")
   lastLoginAt          DateTime?  @map("last_login_at")
+  lastLoginIp          String?    @map("last_login_ip_at")
+  lastLoginOrigin      String?    @map("last_login_origin")
   hierarchyLevel       Int        @default(0) @map("hierarchy_level")
   hierarchyPath        String     @default("0") @map("hierarchy_path")
   deactivationReason   String?    @map("deactivation_reason") @db.Text
@@ -70,7 +71,6 @@ model Employee {
   email                String         @unique
   phoneNumber          String         @unique @map("phone_number")
   password             String
-  passwordSalt         String?        @map("password_salt")
   departmentId         String         @map("department_id")
   status               EmployeeStatus @default(ACTIVE)
   refreshToken         String?        @map("refresh_token") @db.Text
@@ -111,7 +111,6 @@ model User {
   email                         String     @unique
   phoneNumber                   String     @unique @map("phone_number")
   password                      String
-  passwordSalt                  String?    @map("password_salt")
   transactionPin                String?    @map("transaction_pin")
   transactionPinSalt            String?    @map("transaction_pin_salt")
   parentId                      String?    @map("parent_id")
@@ -500,8 +499,8 @@ model Role {
   hierarchyLevel  Int         @unique @map("hierarchy_level")
   description     String?     @db.Text
   createdByType   CreatorType @map("created_by_type")
-  createdByRootId String      @map("created_root_by_id")
-  createdByUserId String      @map("created_user_by_id")
+  createdByRootId String?     @map("created_root_by_id")
+  createdByUserId String?     @map("created_user_by_id")
   createdAt       DateTime    @default(now()) @map("created_at")
   updatedAt       DateTime    @default(now()) @updatedAt @map("updated_at")
 
@@ -892,12 +891,12 @@ model IpWhitelist {
   id         String   @id @default(uuid())
   domainName String   @unique @map("domain_name") @db.VarChar(255)
   serverIp   String   @map("server_ip") @db.VarChar(45)
-  userId     String   @map("user_id")
+  userId     String?  @map("user_id")
   rootId     String?  @map("root_id")
   createdAt  DateTime @default(now()) @map("created_at")
   updatedAt  DateTime @default(now()) @updatedAt @map("updated_at")
 
-  user User  @relation(fields: [userId], references: [id])
+  user User? @relation(fields: [userId], references: [id])
   root Root? @relation(fields: [rootId], references: [id])
 
   @@index([domainName])

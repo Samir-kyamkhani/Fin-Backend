@@ -19,7 +19,7 @@ import { RolesGuard } from '../guards/role.guard.js';
 import { Roles } from '../decorators/roles.decorator.js';
 import { Permissions } from '../decorators/permission.decorator.js';
 import type { Request } from 'express';
-import { AuthActor } from '../types/principal.type.js';
+import { AuthActor } from '../interface/auth.interface.js';
 import { UserAuthService } from '../services/user.auth.service.js';
 import { JwtAuthGuard } from '../guards/jwt.guard.js';
 

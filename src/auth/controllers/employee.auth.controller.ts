@@ -17,7 +17,7 @@ import { UpdateProfileDto } from '../dto/update-profile-auth.dto.js';
 import { PermissionGuard } from '../guards/permission.guard.js';
 import { RolesGuard } from '../guards/role.guard.js';
 import type { Request } from 'express';
-import { AuthActor } from '../types/principal.type.js';
+import { AuthActor } from '../interface/auth.interface.js';
 import { EmployeeAuthService } from '../services/employee.auth.service.js';
 import { JwtAuthGuard } from '../guards/jwt.guard.js';
 
