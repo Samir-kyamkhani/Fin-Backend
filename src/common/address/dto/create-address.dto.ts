@@ -1,23 +1,17 @@
-import { IsUUID, IsString, IsNotEmpty, Length, Matches } from 'class-validator';
+import { IsNotEmpty, IsString, IsUUID, Length } from 'class-validator';
 
 export class CreateAddressDto {
   @IsString()
-  @IsNotEmpty({ message: 'Address is required' })
-  @Length(5, 500, { message: 'Address must be between 5 and 500 characters' })
+  @IsNotEmpty()
   address: string;
 
   @IsString()
-  @IsNotEmpty({ message: 'PIN code is required' })
-  @Matches(/^[0-9]{5,10}$/, {
-    message: 'PIN code must be 5-10 digits',
-  })
+  @Length(3, 10)
   pinCode: string;
 
-  @IsUUID('4', { message: 'Invalid state ID format' })
-  @IsNotEmpty({ message: 'State ID is required' })
+  @IsUUID()
   stateId: string;
 
-  @IsUUID('4', { message: 'Invalid city ID format' })
-  @IsNotEmpty({ message: 'City ID is required' })
+  @IsUUID()
   cityId: string;
 }

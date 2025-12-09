@@ -13,5 +13,12 @@ import { SendCredentialsEmailService } from './send-credentials-email/send-crede
     S3Service,
     SendCredentialsEmailService,
   ],
+  exports: [
+    HelperService,
+    CryptoService,
+    HierarchyService,
+    S3Service,
+    SendCredentialsEmailService,
+  ],
 })
 export class UtilsModule {}

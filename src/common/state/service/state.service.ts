@@ -1,26 +1,24 @@
 import { Injectable } from '@nestjs/common';
-import { CreateStateDto } from '../dto/create-state.dto.js';
-import { UpdateStateDto } from '../dto/update-state.dto.js';
+import { PrismaService } from '../../../database/database.connection';
 
 @Injectable()
 export class StateService {
-  create(createStateDto: CreateStateDto) {
-    return 'This action adds a new state';
-  }
+  constructor(private readonly prisma: PrismaService) {}
 
-  findAll() {
-    return `This action returns all state`;
-  }
-
-  findOne(id: number) {
-    return `This action returns a #${id} state`;
-  }
-
-  update(id: number, updateStateDto: UpdateStateDto) {
-    return `This action updates a #${id} state`;
-  }
-
-  remove(id: number) {
-    return `This action removes a #${id} state`;
+  async findAll() {
+    return await this.prisma.state.findMany({
+      include: {
+        cities: {
+          select: {
+            id: true,
+            cityName: true,
+            cityCode: true,
+          },
+        },
+      },
+      orderBy: {
+        stateName: 'asc',
+      },
+    });
   }
 }

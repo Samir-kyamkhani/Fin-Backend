@@ -87,13 +87,14 @@ model Employee {
   createdByUserId      String         @map("created_by_user_id")
   createdByRootId      String         @map("created_by_root_id")
 
-  department          Department           @relation(fields: [departmentId], references: [id])
-  employeePermissions EmployeePermission[]
-  createdByRoot       Root?                @relation("EmployeeCreatedByRoot", fields: [createdByRootId], references: [id])
-  createdByUser       User?                @relation("EmployeeCreatedByUser", fields: [createdByUserId], references: [id])
-  businessKycs        BusinessKyc[]        @relation("BusinessKycVerifiedByEmployee")
-  user                User?                @relation(fields: [userId], references: [id])
-  userId              String?
+  department                Department           @relation(fields: [departmentId], references: [id])
+  employeePermissions       EmployeePermission[]
+  createdByRoot             Root?                @relation("EmployeeCreatedByRoot", fields: [createdByRootId], references: [id])
+  createdByUser             User?                @relation("EmployeeCreatedByUser", fields: [createdByUserId], references: [id])
+  businessKycs              BusinessKyc[]        @relation("BusinessKycVerifiedByEmployee")
+  user                      User?                @relation(fields: [userId], references: [id])
+  userId                    String?
+  commissionSettingsCreated CommissionSetting[]  @relation("CommissionSettingCreatedByEmployee")
 
   @@index([departmentId])
   @@index([createdByUserId, createdByRootId])
@@ -164,6 +165,7 @@ model User {
   commissionSettings        CommissionSetting[]
   employees                 Employee[]
   serviceProviders          ServiceProvider[]
+  systemSettings            SystemSetting[]
 
   @@index([parentId])
   @@index([hierarchyLevel])
@@ -456,39 +458,59 @@ model LedgerEntry {
 // ==================== SHARED BUSINESS MODELS ====================
 
 model CommissionSetting {
-  id                    String          @id @default(uuid())
-  scope                 CommissionScope @default(ROLE)
-  roleId                String?         @map("role_id")
-  targetUserId          String?         @map("target_user_id")
-  serviceId             String?         @map("service_id")
-  commissionType        CommissionType  @map("commission_type")
-  commissionValue       Decimal         @map("commission_value") @db.Decimal(12, 4)
-  minAmount             BigInt?         @map("min_amount")
-  maxAmount             BigInt?         @map("max_amount")
-  rootCommissionPercent Decimal?        @map("root_commission_percent") @db.Decimal(5, 2)
-  applyTDS              Boolean         @default(false) @map("apply_tds")
-  tdsPercent            Decimal?        @map("tds_percent") @db.Decimal(5, 2)
-  applyGST              Boolean         @default(false) @map("apply_gst")
-  gstPercent            Decimal?        @map("gst_percent") @db.Decimal(5, 2)
-  isActive              Boolean         @default(true) @map("is_active")
-  effectiveFrom         DateTime        @default(now()) @map("effective_from")
-  effectiveTo           DateTime?       @map("effective_to")
-  createdByType         CreatorType     @map("created_by_type")
-  createdByUserId       String          @map("created_by_user_id")
-  createdByRootId       String          @map("created_by_root_id")
-  createdAt             DateTime        @default(now()) @map("created_at")
-  updatedAt             DateTime        @default(now()) @updatedAt @map("updated_at")
+  id String @id @default(uuid())
 
-  role          Role?            @relation(fields: [roleId], references: [id])
-  targetUser    User?            @relation(fields: [targetUserId], references: [id])
-  service       ServiceProvider? @relation(fields: [serviceId], references: [id])
-  createdByRoot Root?            @relation("CommissionSettingCreatedByRoot", fields: [createdByRootId], references: [id])
-  createdByUser User?            @relation("CommissionSettingCreatedByUser", fields: [createdByUserId], references: [id])
+  // ===== SCOPE =====
+  scope        CommissionScope @map("scope")
+  roleId       String?         @map("role_id")
+  targetUserId String?         @map("target_user_id")
+  serviceId    String?         @map("service_id")
 
+  // ===== COMMISSION (CREDIT) =====
+  commissionType  CommissionType? @map("commission_type")
+  commissionValue Decimal?        @map("commission_value") @db.Decimal(12, 4)
+
+  // ===== SURCHARGE (DEBIT) =====
+  surchargeType  CommissionType? @map("surcharge_type")
+  surchargeValue Decimal?        @map("surcharge_value") @db.Decimal(12, 4)
+
+  // ===== SLABS =====
+  minAmount BigInt? @map("min_amount")
+  maxAmount BigInt? @map("max_amount")
+
+  // ===== TAX =====
+  applyTDS   Boolean  @default(false) @map("apply_tds")
+  tdsPercent Decimal? @map("tds_percent") @db.Decimal(5, 2)
+  applyGST   Boolean  @default(false) @map("apply_gst")
+  gstPercent Decimal? @map("gst_percent") @db.Decimal(5, 2)
+
+  // ===== STATUS =====
+  isActive      Boolean   @default(true) @map("is_active")
+  effectiveFrom DateTime  @default(now()) @map("effective_from")
+  effectiveTo   DateTime? @map("effective_to")
+
+  // ===== AUDIT =====
+  createdByType       CreatorType @map("created_by_type")
+  createdByUserId     String?     @map("created_by_user_id")
+  createdByRootId     String?     @map("created_by_root_id")
+  createdByEmployeeId String?     @map("created_by_employee_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // ===== RELATIONS =====
+  role       Role?            @relation(fields: [roleId], references: [id])
+  targetUser User?            @relation(fields: [targetUserId], references: [id])
+  service    ServiceProvider? @relation(fields: [serviceId], references: [id])
+
+  createdByUser     User?     @relation("CommissionSettingCreatedByUser", fields: [createdByUserId], references: [id])
+  createdByRoot     Root?     @relation("CommissionSettingCreatedByRoot", fields: [createdByRootId], references: [id])
+  createdByEmployee Employee? @relation("CommissionSettingCreatedByEmployee", fields: [createdByEmployeeId], references: [id])
+
+  // ===== INDEXES =====
   @@index([scope, roleId, targetUserId])
-  @@index([isActive, effectiveFrom, effectiveTo])
-  @@index([createdByRootId, createdByUserId, createdByType])
-  @@index([serviceId])
+  @@index([serviceId, isActive])
+  @@index([createdByType, createdByUserId, createdByRootId, createdByEmployeeId])
   @@index([effectiveFrom, effectiveTo])
   @@map("commission_settings")
 }
@@ -906,27 +928,35 @@ model IpWhitelist {
 }
 
 model SystemSetting {
-  id             String   @id @default(uuid())
-  companyName    String   @map("company_name") @db.VarChar(200)
-  companyLogo    String   @map("company_logo") @db.VarChar(500)
-  favIcon        String   @map("fav_icon") @db.VarChar(500)
-  phoneNumber    String   @map("phone_number") @db.VarChar(15)
-  whatsappNumber String   @map("whatsapp_number") @db.VarChar(15)
-  companyEmail   String   @map("company_email") @db.VarChar(255)
-  facebookUrl    String   @map("facebook_url") @db.VarChar(500)
-  instagramUrl   String   @map("instagram_url") @db.VarChar(500)
-  twitterUrl     String   @map("twitter_url") @db.VarChar(500)
-  linkedinUrl    String   @map("linkedin_url") @db.VarChar(500)
-  websiteUrl     String   @map("website_url") @db.VarChar(500)
-  settings       Json?    @db.Json
-  rootId         String   @map("root_id")
-  createdAt      DateTime @default(now()) @map("created_at")
-  updatedAt      DateTime @default(now()) @updatedAt @map("updated_at")
+  id    String       @id @default(uuid())
+  scope SettingScope
 
-  root Root @relation(fields: [rootId], references: [id])
+  companyName    String?
+  companyLogo    String?
+  favIcon        String?
+  phoneNumber    String?
+  whatsappNumber String?
+  companyEmail   String?
+  facebookUrl    String?
+  instagramUrl   String?
+  twitterUrl     String?
+  linkedinUrl    String?
+  websiteUrl     String?
 
-  @@index([rootId])
-  @@map("system_settings")
+  settings Json?
+
+  rootId String?
+  userId String?
+
+  updatedBy String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  root      Root?    @relation(fields: [rootId], references: [id])
+  user      User?    @relation(fields: [userId], references: [id])
+
+  @@unique([scope, rootId])
+  @@unique([scope, userId])
 }
 
 model PiiConsent {
@@ -1016,6 +1046,11 @@ model AuditLog {
 
 // ==================== ENUMS ====================
 
+enum SettingScope {
+  ROOT
+  USER
+}
+
 enum UserStatus {
   ACTIVE
   INACTIVE
@@ -1033,6 +1068,7 @@ enum EmployeeStatus {
 enum CreatorType {
   ROOT
   USER
+  EMPLOYEE
 }
 
 enum BankAccountType {

@@ -1,34 +1,27 @@
-import { IsOptional, IsString, IsEnum, IsNumber } from 'class-validator';
-import { Type, Transform } from 'class-transformer';
-import { KycStatus } from '../enums/business-kyc.enum.js';
-
-export enum SortOrder {
-  ASC = 'asc',
-  DESC = 'desc',
-}
+import { IsEnum, IsOptional, IsString } from 'class-validator';
+import { Transform, Type } from 'class-transformer';
+import { KycStatus, SortOrder } from '../enums/business-kyc.enum';
 
 export class BusinessKycQueryDto {
   @IsOptional()
   @IsEnum(KycStatus)
-  status?: KycStatus | 'ALL' = 'ALL';
+  status?: KycStatus;
 
   @IsOptional()
   @IsString()
   search?: string;
 
   @IsOptional()
-  @IsNumber()
   @Type(() => Number)
-  @Transform(({ value }) => parseInt(value, 10))
-  page?: number = 1;
+  @Transform(({ value }) => Number(value))
+  page = 1;
 
   @IsOptional()
-  @IsNumber()
   @Type(() => Number)
-  @Transform(({ value }) => parseInt(value, 10))
-  limit?: number = 10;
+  @Transform(({ value }) => Number(value))
+  limit = 10;
 
   @IsOptional()
   @IsEnum(SortOrder)
-  sort?: SortOrder = SortOrder.DESC;
+  sort: SortOrder = SortOrder.DESC;
 }

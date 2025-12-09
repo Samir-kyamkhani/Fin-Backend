@@ -8,7 +8,8 @@ export enum CommissionType {
   PERCENTAGE = 'PERCENTAGE',
 }
 
-export enum CreatedByType {
+export enum CreatorType {
   ROOT = 'ROOT',
-  ADMIN = 'ADMIN',
+  USER = 'USER',
+  EMPLOYEE = 'EMPLOYEE',
 }
