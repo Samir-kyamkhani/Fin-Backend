@@ -5,9 +5,9 @@ import {
   Injectable,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { ROLES_KEY } from '../decorators/roles.decorator.js';
-import { PrismaService } from '../../database/database.connection.js';
-import { AuthActor } from '../interface/auth.interface.js';
+import { ROLES_KEY } from '../decorators/roles.decorator'
+import { PrismaService } from '../../database/database.connection'
+import { AuthActor } from '../interface/auth.interface'
 
 @Injectable()
 export class RolesGuard implements CanActivate {

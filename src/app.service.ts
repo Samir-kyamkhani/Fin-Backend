@@ -9,7 +9,6 @@ export class AppService {
       status: 'ok',
       message: 'Everything is good!',
     };
-    this.logger.log('Health check requested');
     return response;
   }
 }

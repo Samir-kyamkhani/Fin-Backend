@@ -1,122 +1,210 @@
-# ============================
-# ENVIRONMENT
-# ============================
-
+### ENVIRONMENT VARIABLES ###
 @dev = http://localhost:9000
-@baseUrl = {{dev}}/api/v1
+@baseUrl = {{dev}}/api/v1/users/auth
 
-@accessToken =
+@accessToken = 
 @refreshToken =
 
 
-# ============================
-# HEALTH CHECK
-# ============================
-
-
-### HEALTH CHECK
-GET {{baseUrl}}/health
-
-# ============================
-# AUTH
-# ============================
-
-
-### ROOT LOGIN
-POST {{baseUrl}}/root/auth/login
+### 1. LOGIN ###
+# @name login
+POST {{baseUrl}}/login
 Content-Type: application/json
 
 {
-  "email": "root@system.com",
-  "password": "Root@123"
+  "email": "statehead@system.com",
+  "password": "State@123"
 }
 
 
-### ROOT LOGOUT
-POST {{baseUrl}}/root/auth/logout
+### Save tokens from login response ###
+# After successful login, update these variables manually
+# Check Set-Cookie headers in response
+# @accessToken = <access_token_from_cookie>
+# @refreshToken = <refresh_token_from_cookie>
+
+
+### 2. REFRESH TOKEN ###
+POST {{baseUrl}}/refresh-token
+Content-Type: application/json
+Cookie: refresh_token={{refreshToken}}
+
+
+### 3. LOGOUT ###
+POST {{baseUrl}}/logout
+Content-Type: application/json
 Authorization: Bearer {{accessToken}}
 
 
-### REFRESH TOKEN
-POST {{baseUrl}}/root/auth/refresh-token
+### 4. REQUEST PASSWORD RESET ###
+POST {{baseUrl}}/request-password-reset
 Content-Type: application/json
 
 {
-  "refreshToken": "{{refreshToken}}"
+  "email": "user@example.com"
 }
 
 
-# ============================
-# USER PROFILE
-# ============================
-
-
-### ME
-GET {{baseUrl}}/root/auth/me
-Authorization: Bearer {{accessToken}}
-
-
-### DASHBOARD
-GET {{baseUrl}}/root/auth/dashboard
-Authorization: Bearer {{accessToken}}
-
-
-### UPDATE CREDENTIALS
-PATCH {{baseUrl}}/root/auth/credentials
-Authorization: Bearer {{accessToken}}
+### 5. CONFIRM PASSWORD RESET ###
+POST {{baseUrl}}/confirm-password-reset
 Content-Type: application/json
 
 {
-  "currentPassword": "oldpass",
-  "newPassword": "newpass123"
+  "token": "reset_token_from_email",
+  "password": "NewPassword@123"
 }
 
 
-### UPDATE PROFILE
-PATCH {{baseUrl}}/root/auth/profile
-Authorization: Bearer {{accessToken}}
+### 6. GET CURRENT USER PROFILE ###
+GET {{baseUrl}}/me
 Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+
+### 7. GET DASHBOARD ###
+GET {{baseUrl}}/dashboard
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+
+### 8. UPDATE CREDENTIALS ###
+PATCH {{baseUrl}}/credentials
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
 
 {
-  "firstName": "Root",
-  "lastName": "Admin",
-  "username": "rootmaster",
-  "email": "root@example.com",
-  "phoneNumber": "9876543210"
+  "currentPassword": "OldPassword@123",
+  "newPassword": "NewPassword@123"
 }
 
 
-### UPDATE PROFILE IMAGE
-PATCH {{baseUrl}}/root/auth/profile-image
+### 9. UPDATE PROFILE ###
+PATCH {{baseUrl}}/profile
+Content-Type: application/json
 Authorization: Bearer {{accessToken}}
-Content-Type: multipart/form-data; boundary=----Form
 
-------Form
+{
+  "firstName": "John",
+  "lastName": "Doe",
+  "username": "johndoe",
+  "phoneNumber": "+1234567890",
+  "email": "john.doe@example.com"
+}
+
+
+### 10. UPDATE PROFILE IMAGE ###
+PATCH {{baseUrl}}/profile-image
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundary
+Authorization: Bearer {{accessToken}}
+
+------WebKitFormBoundary
 Content-Disposition: form-data; name="profileImage"; filename="profile.jpg"
 Content-Type: image/jpeg
 
-< ./path/to/profile.jpg
-------Form--
+< ./test-image.jpg
+------WebKitFormBoundary--
 
 
-# ============================
-# PASSWORD RESET
-# ============================
+### 11. GET DOWNLINE USERS (Hierarchy roles only) ###
+GET {{baseUrl}}/downline
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
 
 
-### REQUEST PASSWORD RESET
-POST {{baseUrl}}/root/auth/request-password-reset
+### 12. GET HIERARCHY INFO ###
+GET {{baseUrl}}/hierarchy-info
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+
+### TEST SCENARIOS ###
+
+
+### Scenario 1: Complete Authentication Flow ###
+
+
+### Step 1: Login
+POST {{baseUrl}}/login
 Content-Type: application/json
 
 {
-  "email": "root@example.com"
+  "email": "test@example.com",
+  "password": "test123"
 }
 
 
-### CONFIRM PASSWORD RESET
-POST {{baseUrl}}/root/auth/confirm-password-reset
+### Step 2: Get Profile (after setting accessToken from Step 1)
+GET {{baseUrl}}/me
+Authorization: Bearer {{accessToken}}
+
+
+### Step 3: Logout
+POST {{baseUrl}}/logout
+Authorization: Bearer {{accessToken}}
+
+
+### Scenario 2: Password Reset Flow ###
+
+
+### Step 1: Request Reset
+POST {{baseUrl}}/request-password-reset
 Content-Type: application/json
 
 {
-  "token": "your-token-here"
+  "email": "forgot@example.com"
 }
+
+
+### Step 2: Confirm Reset (use token from email)
+POST {{baseUrl}}/confirm-password-reset
+Content-Type: application/json
+
+{
+  "token": "abc123def456",
+  "password": "NewSecurePass@123"
+}
+
+
+### Scenario 3: Error Cases ###
+
+
+### Invalid Login
+POST {{baseUrl}}/login
+Content-Type: application/json
+
+{
+  "email": "wrong@example.com",
+  "password": "wrong"
+}
+
+
+### Access Without Token
+GET {{baseUrl}}/me
+
+
+### Invalid Token
+GET {{baseUrl}}/me
+Authorization: Bearer invalid_token_here
+
+
+### Update Profile with Existing Email
+PATCH {{baseUrl}}/profile
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "email": "existing@example.com"
+}
+
+
+### Upload Invalid File Type
+PATCH {{baseUrl}}/profile-image
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundary
+Authorization: Bearer {{accessToken}}
+
+------WebKitFormBoundary
+Content-Disposition: form-data; name="profileImage"; filename="document.pdf"
+Content-Type: application/pdf
+
+< ./test-document.pdf
+------WebKitFormBoundary--

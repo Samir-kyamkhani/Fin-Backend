@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import nodemailer from 'nodemailer';
+import nodemailer, { Transporter } from 'nodemailer';
 import EmailTemplates from './email-templates';
 import {
   EmployeeCredentialsOptions,
@@ -8,20 +8,26 @@ import {
   PasswordResetOptions,
   EmailVerificationOptions,
 } from '../interface/auth.interface';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class EmailService {
-  private transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
-    port: Number(process.env.SMTP_PORT) || 587,
-    secure: false,
-    auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS,
-    },
-  });
+  private transporter: Transporter;
+  private fromEmail: string;
 
-  private fromEmail = process.env.FROM_EMAIL;
+  constructor(private config: ConfigService) {
+    this.transporter = nodemailer.createTransport({
+      host: this.config.get<string>('smtp.host'),
+      port: this.config.get<number>('smtp.port'),
+      secure: false,
+      auth: {
+        user: this.config.get<string>('smtp.user'),
+        pass: this.config.get<string>('smtp.pass'),
+      },
+    });
+
+    this.fromEmail = this.config.get<string>('smtp.fromEmail')!;
+  }
 
   // GENERIC SEND EMAIL FUNCTION
   sendEmail(to: string, subject: string, text: string, html: string) {

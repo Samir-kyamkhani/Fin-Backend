@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { CreateLedgerEntryDto } from '../dto/create-ledger-entry.dto.js';
-import { UpdateLedgerEntryDto } from '../dto/update-ledger-entry.dto.js';
+import { CreateLedgerEntryDto } from '../dto/create-ledger-entry.dto'
+import { UpdateLedgerEntryDto } from '../dto/update-ledger-entry.dto'
 
 @Injectable()
 export class LedgerEntryService {

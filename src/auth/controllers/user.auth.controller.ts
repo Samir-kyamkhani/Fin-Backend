@@ -1,93 +1,267 @@
-// src/auth/controllers/user-auth.controller.ts
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
+  HttpCode,
+  HttpStatus,
   Patch,
   Post,
   Req,
+  Res,
+  UnauthorizedException,
+  UploadedFile,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
-import { LoginDto } from '../dto/login-auth.dto.js';
-import { RefreshTokenDto } from '../dto/refresh-token-auth.dto.js';
-import { ForgotPasswordDto } from '../dto/forgot-password-auth.dto.js';
-import { ConfirmPasswordResetDto } from '../dto/confirm-password-reset-auth.dto.js';
-import { UpdateCredentialsDto } from '../dto/update-credentials-auth.dto.js';
-import { UpdateProfileDto } from '../dto/update-profile-auth.dto.js';
-import { PermissionGuard } from '../guards/permission.guard.js';
-import { RolesGuard } from '../guards/role.guard.js';
-import { Roles } from '../decorators/roles.decorator.js';
-import { Permissions } from '../decorators/permission.decorator.js';
-import type { Request } from 'express';
-import { AuthActor } from '../interface/auth.interface.js';
-import { UserAuthService } from '../services/user.auth.service.js';
-import { JwtAuthGuard } from '../guards/jwt.guard.js';
+import { ConfigService } from '@nestjs/config';
+import { FileInterceptor } from '@nestjs/platform-express';
+import {
+  MaxFileSizeValidator,
+  FileTypeValidator,
+  ParseFilePipe,
+} from '@nestjs/common';
+import type { Request, Response, CookieOptions } from 'express';
 
-@Controller('/api/v1/users/auth')
+import { ForgotPasswordDto } from '../dto/forgot-password-auth.dto';
+import { ConfirmPasswordResetDto } from '../dto/confirm-password-reset-auth.dto';
+import { UpdateCredentialsDto } from '../dto/update-credentials-auth.dto';
+import { UpdateProfileDto } from '../dto/update-profile-auth.dto';
+import { LoginDto } from '../dto/login-auth.dto';
+
+import { PermissionGuard } from '../guards/permission.guard';
+import { RolesGuard } from '../guards/role.guard';
+import { Roles } from '../decorators/roles.decorator';
+import { JwtAuthGuard } from '../guards/jwt.guard';
+
+import type { AuthActor, TokenPair } from '../interface/auth.interface';
+import { UserAuthService } from '../services/user.auth.service';
+import { CurrentUser } from '../decorators/current-user.decorator';
+
+@Controller('api/v1/users/auth')
 export class UserAuthController {
-  constructor(private readonly authService: UserAuthService) {}
+  private readonly accessTokenCookieOptions: CookieOptions;
+  private readonly refreshTokenCookieOptions: CookieOptions;
+
+  private static readonly ACCESS_TOKEN_COOKIE_NAME = 'access_token';
+  private static readonly REFRESH_TOKEN_COOKIE_NAME = 'refresh_token';
+
+  constructor(
+    private readonly authService: UserAuthService,
+    private readonly configService: ConfigService,
+  ) {
+    const isProd = this.configService.get<string>('NODE_ENV') === 'production';
+
+    const baseCookieOptions: CookieOptions = {
+      httpOnly: true,
+      secure: isProd,
+      sameSite: isProd ? 'strict' : 'lax',
+      path: '/',
+    };
+
+    this.accessTokenCookieOptions = {
+      ...baseCookieOptions,
+      maxAge: 1000 * 60 * 60 * 24 * 1,
+    };
+
+    this.refreshTokenCookieOptions = {
+      ...baseCookieOptions,
+      maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
+    };
+  }
+
+  private setAuthCookies(res: Response, tokens: TokenPair): void {
+    res.cookie(
+      UserAuthController.ACCESS_TOKEN_COOKIE_NAME,
+      tokens.accessToken,
+      this.accessTokenCookieOptions,
+    );
+
+    res.cookie(
+      UserAuthController.REFRESH_TOKEN_COOKIE_NAME,
+      tokens.refreshToken,
+      this.refreshTokenCookieOptions,
+    );
+  }
+
+  private clearAuthCookies(res: Response): void {
+    res.clearCookie(UserAuthController.ACCESS_TOKEN_COOKIE_NAME, {
+      path: '/',
+    });
+
+    res.clearCookie(UserAuthController.REFRESH_TOKEN_COOKIE_NAME, {
+      path: '/',
+    });
+  }
 
   @Post('login')
-  login(@Body() dto: LoginDto) {
-    return this.authService.login(dto);
+  @HttpCode(HttpStatus.OK)
+  async login(
+    @Body() dto: LoginDto,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<{ success: true }> {
+    const result = await this.authService.login(dto, req);
+
+    this.setAuthCookies(res, result.tokens);
+
+    return { success: true };
   }
 
   @Post('refresh-token')
-  refresh(@Body() dto: RefreshTokenDto) {
-    return this.authService.refreshToken(dto);
+  @HttpCode(HttpStatus.OK)
+  async refresh(
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<{ success: true }> {
+    const refreshToken = req.cookies?.[
+      UserAuthController.REFRESH_TOKEN_COOKIE_NAME
+    ] as string | undefined;
+
+    if (!refreshToken) {
+      throw new UnauthorizedException('Refresh token is missing');
+    }
+
+    const result = await this.authService.refreshToken(refreshToken, req);
+
+    this.setAuthCookies(res, result.tokens);
+
+    return { success: true };
   }
 
   @UseGuards(JwtAuthGuard)
   @Post('logout')
-  logout(@Req() req: Request) {
-    const actor = req.user as AuthActor;
-    return this.authService.logout(actor.id);
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async logout(
+    @Req() req: Request,
+    @CurrentUser() user: AuthActor,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<void> {
+    if (!user) {
+      throw new UnauthorizedException();
+    }
+
+    this.clearAuthCookies(res);
+
+    await this.authService.logout(user.id, req);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Post('request-password-reset')
-  requestPasswordReset(@Body() dto: ForgotPasswordDto) {
-    return this.authService.requestPasswordReset(dto);
+  @HttpCode(HttpStatus.ACCEPTED)
+  async requestPasswordReset(
+    @CurrentUser() user: AuthActor,
+    @Body() dto: ForgotPasswordDto,
+  ): Promise<{ success: true; message: string }> {
+    const result = await this.authService.requestPasswordReset(dto, user);
+    return { success: true, message: result.message };
   }
 
+  @UseGuards(JwtAuthGuard)
   @Post('confirm-password-reset')
-  confirmPasswordReset(@Body() dto: ConfirmPasswordResetDto) {
-    return this.authService.confirmPasswordReset(dto);
+  @HttpCode(HttpStatus.OK)
+  async confirmPasswordReset(
+    @CurrentUser() user: AuthActor,
+    @Body() dto: ConfirmPasswordResetDto,
+  ): Promise<{ success: true; message: string }> {
+    const result = await this.authService.confirmPasswordReset(dto, user);
+    return { success: true, message: result.message };
   }
 
   @UseGuards(JwtAuthGuard)
   @Get('me')
-  getMe(@Req() req: Request) {
-    const actor = req.user as AuthActor;
-    return this.authService.getCurrentUser(actor.id);
+  async getMe(@CurrentUser() user: AuthActor) {
+    if (!user) {
+      throw new UnauthorizedException();
+    }
+
+    return this.authService.getCurrentUser(user.id);
   }
 
   @UseGuards(JwtAuthGuard, PermissionGuard, RolesGuard)
   @Get('dashboard')
-  getDashboard(@Req() req: Request) {
-    const actor = req.user as AuthActor;
-    return this.authService.getDashboard(actor.id);
+  async getDashboard(@CurrentUser() user: AuthActor) {
+    if (!user) {
+      throw new UnauthorizedException();
+    }
+
+    return this.authService.getDashboard(user.id);
   }
 
   @UseGuards(JwtAuthGuard)
   @Patch('credentials')
-  updateCredentials(@Req() req: Request, @Body() dto: UpdateCredentialsDto) {
-    const actor = req.user as AuthActor;
-    return this.authService.updateCredentials(actor.id, dto);
+  async updateCredentials(
+    @CurrentUser() user: AuthActor,
+    @Body() dto: UpdateCredentialsDto,
+  ) {
+    if (!user) {
+      throw new UnauthorizedException();
+    }
+
+    return this.authService.updateCredentials(user.id, dto);
   }
 
   @UseGuards(JwtAuthGuard)
   @Patch('profile')
-  updateProfile(@Req() req: Request, @Body() dto: UpdateProfileDto) {
-    const actor = req.user as AuthActor;
-    return this.authService.updateProfile(actor.id, dto);
+  async updateProfile(
+    @CurrentUser() user: AuthActor,
+    @Body() dto: UpdateProfileDto,
+  ) {
+    if (!user) {
+      throw new UnauthorizedException();
+    }
+
+    return this.authService.updateProfile(user.id, dto);
   }
 
-  // ROOT requirement: ADMIN can create employee from here
+  @UseGuards(JwtAuthGuard)
+  @Patch('profile-image')
+  @UseInterceptors(FileInterceptor('profileImage'))
+  async updateProfileImage(
+    @Req() req: Request,
+    @CurrentUser() user: AuthActor,
+    @UploadedFile(
+      new ParseFilePipe({
+        validators: [
+          new MaxFileSizeValidator({ maxSize: 5 * 1024 * 1024 }),
+          new FileTypeValidator({
+            fileType: /^(image\/jpeg|image\/png|image\/webp)$/,
+          }),
+        ],
+      }),
+    )
+    file: Express.Multer.File,
+  ) {
+    if (!user) {
+      throw new UnauthorizedException();
+    }
+
+    if (!file) {
+      throw new BadRequestException('profileImage file is required');
+    }
+
+    return this.authService.updateProfileImage(user.id, file, req);
+  }
+
+  // Hierarchy-specific endpoints
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ADMIN')
-  @Post('employees')
-  createEmployee(@Req() req: Request, @Body() body: any) {
-    const actor = req.user as AuthActor;
-    return this.authService.createEmployeeByAdmin(actor.id, body);
+  @Roles('ADMIN', 'STATE_HEAD', 'MASTER_DISTRIBUTOR', 'DISTRIBUTOR')
+  @Get('downline')
+  async getDownlineUsers(@CurrentUser() user: AuthActor) {
+    if (!user) {
+      throw new UnauthorizedException();
+    }
+
+    return await this.authService.getDownlineUsers(user.id);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Get('hierarchy-info')
+  async getHierarchyInfo(@CurrentUser() user: AuthActor) {
+    if (!user) {
+      throw new UnauthorizedException();
+    }
+
+    return await this.authService.getHierarchyInfo(user.id);
   }
 }

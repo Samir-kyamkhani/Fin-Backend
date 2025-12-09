@@ -16,7 +16,7 @@ export type IpWhitelistRootType = {
   updatedAt: Date;
 };
 
-export type IpWhitelistRootTypeMap = {
+export type IpWhitelistTypeMap = {
   domainName: string;
   serverIp: string;
 };

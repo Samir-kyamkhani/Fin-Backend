@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { CreateServiceProviderDto } from '../dto/create-service-provider.dto.js';
-import { UpdateServiceProviderDto } from '../dto/update-service-provider.dto.js';
+import { CreateServiceProviderDto } from '../dto/create-service-provider.dto'
+import { UpdateServiceProviderDto } from '../dto/update-service-provider.dto'
 
 @Injectable()
 export class ServiceProviderService {

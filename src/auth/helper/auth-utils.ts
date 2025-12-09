@@ -1,83 +1,160 @@
-import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  InternalServerErrorException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { randomBytes, pbkdf2Sync, timingSafeEqual } from 'node:crypto';
+import {
+  randomBytes,
+  createCipheriv,
+  createDecipheriv,
+  createHmac,
+} from 'node:crypto';
 import type { Request } from 'express';
 import {
   AuthActor,
   JwtPayload,
   PrincipalType,
-} from '../interface/auth.interface.js';
-import { PermissionService } from '../permission-registry/permission.service.js';
-import { AuditLogService } from '../../common/audit-log/service/audit-log.service.js';
-import { AuditStatus } from '../../common/audit-log/enums/audit-log.enum.js';
+} from '../interface/auth.interface';
+import { PermissionService } from '../permission-registry/permission.service';
+import { AuditLogService } from '../../common/audit-log/service/audit-log.service';
+import { AuditStatus } from '../../common/audit-log/enums/audit-log.enum';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class AuthUtilsService {
-  private readonly iterations = 310000; // OWASP recommended
-  private readonly keylen = 32; // 256-bit
-  private readonly digest = 'sha256';
   private readonly logger = new Logger(AuthUtilsService.name);
+
+  private readonly ALGORITHM = 'aes-256-gcm';
+  private readonly IV_LENGTH = 16; // 128 bits
+  private readonly KEY_LENGTH = 32; // 256 bits
+  private readonly secretKey: Buffer;
 
   constructor(
     private readonly jwt: JwtService,
     private readonly permissionService: PermissionService,
     private readonly auditLogService: AuditLogService,
-  ) {}
+    private readonly configService: ConfigService,
+  ) {
+    const key = this.configService.get<string>('security.authKeySecret');
 
+    if (!key) {
+      throw new Error('Environment variable AUTH_SECRET_KEY is not set');
+    }
+
+    const keyBuffer = Buffer.from(key, 'hex');
+    if (keyBuffer.length !== this.KEY_LENGTH) {
+      throw new Error(
+        `AUTH_SECRET_KEY must be ${this.KEY_LENGTH} bytes in hex`,
+      );
+    }
+
+    this.secretKey = keyBuffer;
+  }
+
+  // Encrypt password (store in DB)
   hashPassword(password: string): string {
-    const salt = randomBytes(16);
-    const iterations = 100000;
-    const keylen = 64;
-    const digest = 'sha512';
+    try {
+      const iv = randomBytes(this.IV_LENGTH);
+      const cipher = createCipheriv(this.ALGORITHM, this.secretKey, iv);
 
-    const hash = pbkdf2Sync(password, salt, iterations, keylen, digest);
+      let encrypted = cipher.update(password, 'utf8', 'hex');
+      encrypted += cipher.final('hex');
 
-    return `${iterations}:${salt.toString('hex')}:${hash.toString('hex')}`;
-  }
-
-  verifyPassword(plain: string, storedHash: string): void {
-    const parts = storedHash.split(':');
-    if (parts.length !== 3) {
-      throw new UnauthorizedException('Invalid stored hash');
-    }
-
-    const [iterationsStr, saltHex, hashHex] = parts;
-
-    const iterations = parseInt(iterationsStr, 10);
-    const salt = Buffer.from(saltHex, 'hex');
-    const stored = Buffer.from(hashHex, 'hex');
-
-    const derived = pbkdf2Sync(
-      plain,
-      salt,
-      iterations,
-      stored.length,
-      'sha512',
-    );
-
-    if (!timingSafeEqual(stored, derived)) {
-      throw new UnauthorizedException('Invalid sss credentials');
+      const authTag = cipher.getAuthTag();
+      return `${iv.toString('hex')}:${encrypted}:${authTag.toString('hex')}`;
+    } catch (error) {
+      this.logger.error('Encryption failed:', error);
+      throw new InternalServerErrorException('Encryption failed');
     }
   }
 
-  generateRandomPassword(length = 10): string {
+  // only for seed
+  static hashPasswordforSeed(password: string): string {
+    try {
+      const keyHex = process.env.CRYPTO_SECRET_KEY;
+      if (!keyHex) throw new Error('AUTH_SECRET_KEY missing in .env');
+
+      const secretKey = Buffer.from(keyHex, 'hex');
+      if (secretKey.length !== 32) {
+        throw new Error('AUTH_SECRET_KEY must be 32 bytes (64 hex chars)');
+      }
+
+      const iv = randomBytes(16);
+      const cipher = createCipheriv('aes-256-gcm', secretKey, iv);
+
+      let encrypted = cipher.update(password, 'utf8', 'hex');
+      encrypted += cipher.final('hex');
+
+      const authTag = cipher.getAuthTag();
+
+      return `${iv.toString('hex')}:${encrypted}:${authTag.toString('hex')}`;
+    } catch (error) {
+      // static method → cannot use this.logger
+      console.error('Seed encryption failed:', error);
+      throw new InternalServerErrorException('Seed encryption failed');
+    }
+  }
+
+  // Decrypt password (show in dashboard)
+  decryptPassword(encrypted: string): string {
+    try {
+      const [ivHex, encryptedHex, authTagHex] = encrypted.split(':');
+      if (!ivHex || !encryptedHex || !authTagHex)
+        throw new InternalServerErrorException('Invalid encrypted format');
+
+      const iv = Buffer.from(ivHex, 'hex');
+      const authTag = Buffer.from(authTagHex, 'hex');
+
+      const decipher = createDecipheriv(this.ALGORITHM, this.secretKey, iv);
+      decipher.setAuthTag(authTag);
+
+      let decrypted = decipher.update(encryptedHex, 'hex', 'utf8');
+      decrypted += decipher.final('utf8');
+
+      return decrypted;
+    } catch (error) {
+      this.logger.error('Decryption failed:', error);
+      throw new InternalServerErrorException('Decryption failed');
+    }
+  }
+
+  verifyPassword(plain: string, encrypted: string): boolean {
+    const decrypted = this.decryptPassword(encrypted);
+    return plain === decrypted;
+  }
+
+  generateRandomPassword(length = 12): string {
     const chars =
       'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
-    let res = '';
-    const bytes = randomBytes(length);
-    for (let i = 0; i < length; i += 1) {
-      res += chars[bytes[i] % chars.length];
+    let result = '';
+    const rnd = randomBytes(length);
+
+    for (let i = 0; i < length; i++) {
+      result += chars[rnd[i] % chars.length];
     }
-    return res;
+    return result;
   }
 
-  // ========== JWT / ACTOR ==========
+  // Transaction PIN ke liye methods
+  generateRandomTransactionPin(): string {
+    return Math.floor(100000 + Math.random() * 900000).toString();
+  }
+
+  hashResetToken(token: string) {
+    const secret = this.configService.get<string>('security.authKeySecret');
+
+    if (!secret) {
+      throw new Error('security.authKeySecret is not set in configuration');
+    }
+
+    return createHmac('sha256', secret).update(token).digest('hex');
+  }
 
   createActor(params: {
     id: string;
     principalType: PrincipalType;
     roleId?: string | null;
-    departmentId?: string | null;
     isRoot?: boolean;
   }): AuthActor {
     return {
@@ -85,7 +162,6 @@ export class AuthUtilsService {
       principalType: params.principalType,
       isRoot: params.isRoot ?? false,
       roleId: params.roleId ?? null,
-      departmentId: params.departmentId ?? null,
     };
   }
 
@@ -93,21 +169,29 @@ export class AuthUtilsService {
     const payload: JwtPayload = {
       sub: actor.id,
       principalType: actor.principalType,
-      roleId: actor.roleId ?? null,
-      departmentId: actor.departmentId ?? null,
-      isRoot: actor.isRoot ?? false,
+      roleId: actor.roleId,
+      isRoot: actor.isRoot,
     };
 
     return {
       accessToken: this.jwt.sign(payload, { expiresIn: '1h' }),
-      refreshToken: this.jwt.sign(payload, { expiresIn: '7d' }),
+      refreshToken: this.jwt.sign(payload, { expiresIn: '30d' }),
     };
   }
 
-  stripSensitive<T extends object>(obj: T, fields: string[]) {
-    const clone = { ...(obj as any) };
+  verifyJwt(token: string): JwtPayload | null {
+    try {
+      return this.jwt.verify<JwtPayload>(token);
+    } catch (err) {
+      this.logger.warn(`JWT verification failed: ${err.message}`);
+      return null;
+    }
+  }
+
+  stripSensitive<T extends object>(obj: T, fields: string[]): T {
+    const clone: any = { ...obj };
     for (const f of fields) delete clone[f];
-    return clone as Omit<T, (typeof fields)[number]>;
+    return clone;
   }
 
   async getEffectivePermissionStrings(actor: AuthActor): Promise<string[]> {
@@ -118,200 +202,182 @@ export class AuthUtilsService {
   getClientIp(req: Request): string | null {
     const forwarded = req.headers['x-forwarded-for'];
 
-    let ip: string | undefined;
+    let ip: string | null = null;
 
     if (typeof forwarded === 'string') {
-      ip = forwarded.split(',')[0]?.trim();
+      ip = forwarded.split(',')[0]?.trim() || null;
     } else if (Array.isArray(forwarded)) {
-      ip = forwarded[0]?.trim();
-    } else if (req.socket?.remoteAddress) {
-      ip = req.socket.remoteAddress;
+      ip = forwarded[0]?.trim() || null;
+    } else {
+      ip = req.ip ?? req.socket?.remoteAddress ?? null;
     }
 
-    if (
-      !ip ||
-      ip.startsWith('127.') ||
-      ip === '::1' ||
-      ip.startsWith('192.168.') ||
-      ip.startsWith('10.')
-    ) {
-      return null;
-    }
+    if (!ip) return null;
+
+    // Normalize IPv6-mapped IPv4 → "::ffff:127.0.0.1"
+    if (ip.startsWith('::ffff:')) ip = ip.replace('::ffff:', '');
+
+    // Normalize IPv6 localhost
+    if (ip === '::1') ip = '127.0.0.1';
 
     return ip;
   }
 
   getClientOrigin(req: Request): string | null {
-    return (req.get('origin') || req.get('Origin')) ?? null;
+    return req.get('origin') || req.get('Origin') || null;
   }
 
   getClientUserAgent(req: Request): string | null {
-    return (req.headers['user-agent'] as string) ?? undefined;
+    return (req.headers['user-agent'] as string) || null;
   }
 
-  private isIpInCidrRange(ip: string, cidr: string): boolean {
+  isValidOrigin(
+    origin: string | null,
+    allowed: string[],
+    isProd = this.configService.get<string>('security.production') ===
+      'production',
+  ): boolean {
+    // DEV MODE: Origin null allowed (Postman, Thunder, REST Client)
+    if (!isProd && !origin) return true;
+
+    // PROD MODE: Origin null NEVER allowed (strict security)
+    if (isProd && !origin) return false;
+
+    const cleaned = allowed.filter(Boolean);
+
+    // Prod: whitelist empty = deny
+    if (isProd && !cleaned.length) return false;
+
+    // Dev: whitelist empty = allow all
+    if (!isProd && !cleaned.length) return true;
+
+    const raw = origin!; // now safe to use (we checked above)
+
+    let hostname: string;
+    let protocol: string;
+
     try {
-      const [range, bits] = cidr.split('/');
-      const mask = ~(0xffffffff >>> parseInt(bits, 10));
-
-      const ipLong = this.ipToLong(ip);
-      const rangeLong = this.ipToLong(range);
-
-      return (ipLong & mask) === (rangeLong & mask);
+      const u = new URL(raw);
+      hostname = u.hostname;
+      protocol = u.protocol;
     } catch {
       return false;
     }
+
+    return cleaned.some((domain) => {
+      try {
+        const d = new URL(domain);
+
+        if (d.protocol !== protocol) return false;
+
+        return d.hostname === hostname;
+      } catch {
+        // Bare domain fallback
+        return domain === hostname;
+      }
+    });
   }
 
   private ipToLong(ip: string): number {
     return (
       ip
         .split('.')
-        .reduce((acc, octet) => (acc << 8) + parseInt(octet, 10), 0) >>> 0
+        .map((x) => parseInt(x, 10))
+        .reduce((acc, val) => acc * 256 + val) >>> 0
     );
   }
 
-  private isLocalEnvironment(clientIp: string, allowedIps: string[]): boolean {
-    const isLocalIp =
-      clientIp.startsWith('127.') ||
-      clientIp.startsWith('192.168.') ||
-      clientIp.startsWith('10.') ||
-      clientIp === '::1';
-
-    const hasLocalWhitelist = allowedIps.some(
-      (ip) =>
-        ip.startsWith('127.') ||
-        ip.startsWith('192.168.') ||
-        ip.startsWith('10.') ||
-        ip === '::1',
-    );
-
-    return isLocalIp && hasLocalWhitelist;
-  }
-
-  isValidOriginForRoot(
-    clientOrigin: string | null,
-    allowedDomains: string[],
-  ): boolean {
-    if (!clientOrigin) {
-      return true;
-    }
-
-    const domains = allowedDomains.filter((d) => d && d.trim() !== '');
-    if (!domains.length) return true;
-
-    let clientHostname: string;
-    let clientProtocol: string;
-
+  private inCidr(ip: string, cidr: string): boolean {
     try {
-      const clientUrl = new URL(clientOrigin);
-      clientHostname = clientUrl.hostname;
-      clientProtocol = clientUrl.protocol;
+      const [range, bits] = cidr.split('/');
+      const mask = ~(2 ** (32 - Number(bits)) - 1);
+
+      return (this.ipToLong(ip) & mask) === (this.ipToLong(range) & mask);
     } catch {
       return false;
     }
+  }
 
-    return domains.some((domain) => {
-      try {
-        const domainUrl = new URL(domain);
-        const domainHostname = domainUrl.hostname;
-        const domainProtocol = domainUrl.protocol;
+  isValidIp(
+    clientIp: string | null,
+    allowedIps: string[],
+    isProd = this.configService.get<string>('security.production') ===
+      'production',
+  ): boolean {
+    if (!clientIp) return false;
 
-        if (domainProtocol !== clientProtocol) {
-          return false;
-        }
+    const cleaned = allowedIps.filter(Boolean);
 
-        if (domainHostname === clientHostname) return true;
-
-        if (domainHostname.startsWith('*.')) {
-          const base = domainHostname.substring(2);
-          return clientHostname === base || clientHostname.endsWith(`.${base}`);
-        }
-
-        return false;
-      } catch {
-        // bare hostname / wildcard
-        if (domain.startsWith('*.')) {
-          const base = domain.substring(2);
-          return clientHostname === base || clientHostname.endsWith(`.${base}`);
-        }
-        return domain === clientHostname;
+    // DEV MODE — allow localhost & LAN always
+    if (!isProd) {
+      if (
+        clientIp === '127.0.0.1' ||
+        clientIp.startsWith('192.168.') ||
+        clientIp.startsWith('10.') ||
+        clientIp.startsWith('172.')
+      ) {
+        return true;
       }
-    });
-  }
 
-  isValidIpForRoot(clientIp: string | null, allowedIps: string[]): boolean {
-    if (!clientIp || !allowedIps.length) return true;
+      // Dev: if no whitelist → allow all
+      if (!cleaned.length) return true;
+    }
 
-    const clean = allowedIps.filter((ip) => ip && ip.trim() !== '');
-    if (!clean.length) return true;
+    // PROD MODE RESTRICTIONS
+    if (isProd && !cleaned.length) return false;
 
-    if (clean.includes(clientIp)) return true;
+    // Exact match
+    if (cleaned.includes(clientIp)) return true;
 
-    const inCidr = clean.some((ipRange) => {
-      if (!ipRange.includes('/')) return false;
-      return this.isIpInCidrRange(clientIp, ipRange);
-    });
-
-    if (inCidr) return true;
-
-    if (this.isLocalEnvironment(clientIp, clean)) return true;
-
-    return false;
-  }
-
-  getAuthActionDescription(action: string, userType: string): string {
-    const map: Record<string, string> = {
-      LOGIN_SUCCESS: `${userType} logged in successfully`,
-      LOGIN_FAILED: `${userType} login attempt failed`,
-      LOGOUT: `${userType} logged out`,
-      REFRESH_TOKEN_SUCCESS: `${userType} token refreshed`,
-      REFRESH_TOKEN_INVALID: `${userType} refresh token invalid`,
-      PASSWORD_RESET_REQUESTED: `${userType} password reset requested`,
-      PASSWORD_RESET_CONFIRMATION_FAILED: `${userType} password reset failed`,
-      PASSWORD_RESET_CONFIRMED: `${userType} password reset confirmed`,
-      CREDENTIALS_UPDATED: `${userType} credentials updated`,
-      PROFILE_UPDATED: `${userType} profile updated`,
-      PROFILE_IMAGE_UPDATED: `${userType} profile image updated`,
-      DASHBOARD_ACCESSED: `${userType} dashboard accessed`,
-    };
-
-    return map[action] ?? `${userType} performed ${action}`;
+    // CIDR match
+    return cleaned.some(
+      (range) => range.includes('/') && this.inCidr(clientIp, range),
+    );
   }
 
   async createAuthAuditLog(params: {
     performerType: PrincipalType;
     performerId: string | null;
+    action: string;
+    status: AuditStatus;
+    description?: string;
     targetUserType?: string | null;
     targetUserId?: string | null;
-    action: string;
-    description?: string;
     resourceType?: string;
     resourceId?: string | null;
-    status: AuditStatus;
     ipAddress?: string | null;
     userAgent?: string | null;
-    metadata?: Record<string, any>;
+    metadata?: any;
   }) {
     try {
       await this.auditLogService.create({
         performerType: params.performerType,
-        performerId: params.performerId ?? '',
+        performerId: params.performerId || '',
         targetUserType: params.targetUserType ?? params.performerType,
         targetUserId: params.targetUserId ?? params.performerId ?? '',
         action: params.action,
         description:
-          params.description ??
-          this.getAuthActionDescription(params.action, params.performerType),
+          params.description ||
+          `${params.performerType} performed ${params.action}`,
         resourceType: params.resourceType ?? 'AUTH',
         resourceId: params.resourceId ?? params.performerId ?? '',
         status: params.status,
-        ipAddress: params.ipAddress ?? undefined,
-        userAgent: params.userAgent ?? undefined,
-        metadata: params.metadata ?? {},
+        ipAddress: params.ipAddress || undefined,
+        userAgent: params.userAgent || undefined,
+        metadata: params.metadata || {},
       });
     } catch (err) {
-      this.logger.error('Auth log error', err);
+      this.logger.error(`Audit log failure: ${err.message}`);
     }
   }
+
+  // Converts paise(BigInt) -> rupees -> string   (SAFE)
+  money = (value?: bigint | number | null): string => {
+    if (value === null || value === undefined) return '0';
+
+    const num = typeof value === 'bigint' ? Number(value) : value;
+
+    // convert paise → rupees
+    return (num / 100).toString();
+  };
 }

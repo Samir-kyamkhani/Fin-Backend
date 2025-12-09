@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { CreateRootCommissionEarningDto } from '../dto/create-root-commission-earning.dto.js';
-import { UpdateRootCommissionEarningDto } from '../dto/update-root-commission-earning.dto.js';
+import { CreateRootCommissionEarningDto } from '../dto/create-root-commission-earning.dto'
+import { UpdateRootCommissionEarningDto } from '../dto/update-root-commission-earning.dto'
 
 @Injectable()
 export class RootCommissionEarningService {

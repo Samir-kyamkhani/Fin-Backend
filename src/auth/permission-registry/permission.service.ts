@@ -1,8 +1,8 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import type { Cache } from 'cache-manager';
-import { AuthActor } from '../interface/auth.interface.js';
-import { PrismaService } from '../../database/database.connection.js';
+import { AuthActor } from '../interface/auth.interface'
+import { PrismaService } from '../../database/database.connection'
 
 export interface EffectivePermission {
   permission: string;
@@ -97,12 +97,12 @@ export class PermissionService {
   private async getEmployeePermissions(
     actor: AuthActor,
   ): Promise<EffectivePermission[]> {
-    if (!actor.departmentId) return [];
+    if (!actor.roleId) return [];
 
     const [deptPerms, empPerms] = await Promise.all([
       this.prisma.departmentPermission.findMany({
         where: {
-          departmentId: actor.departmentId,
+          departmentId: actor.roleId,
           isActive: true,
           revokedAt: null,
         },

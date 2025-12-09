@@ -1,7 +1,4 @@
 import { Module } from '@nestjs/common';
-import { EmployeeService } from './services/employee.service.js';
-import { EmployeeController } from './controllers/employee.controller.js';
-import { AuditLogModule } from '../common/audit-log/audit-log.module.js';
 import { EmployeeBusinessKYCService } from './services/employee.business-kyc.service.js';
 import { EmployeeUserKYCService } from './services/employee.user-kyc.service.js';
 import { BusinessKycModule } from '../common/business-kyc/business-kyc.module.js';
@@ -11,6 +8,9 @@ import { employeeUserKYCController } from './controllers/employee.user-kyc.contr
 import { EmployeeSystemSettingController } from './controllers/employee.system-setting.controller.js';
 import { EmployeeSystemSettingService } from './services/employee.system-setting.service.js';
 import { SystemSettingModule } from '../common/system-setting/system-setting.module.js';
+import { EmployeeService } from './services/employee.service';
+import { EmployeeController } from './controllers/employee.controller';
+import { AuditLogModule } from '../common/audit-log/audit-log.module';
 
 @Module({
   imports: [

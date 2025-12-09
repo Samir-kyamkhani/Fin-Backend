@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { ApiWebhookService } from './service/api-webhook.service.js';
+import { ApiWebhookService } from './service/api-webhook.service'
 
 @Module({
   imports: [],

@@ -1,7 +1,4 @@
 import { Module } from '@nestjs/common';
-import { RootService } from './services/root.service.js';
-import { RootController } from './controllers/root.controller.js';
-import { AuditLogModule } from '../common/audit-log/audit-log.module.js';
 import { RootUserKYCService } from './services/root.user-kyc.service.js';
 import { RootBusinessKYCService } from './services/root.business-kyc.service.js';
 import { RootBusinessKYCController } from './controllers/root.business-kyc.controller.js';
@@ -12,6 +9,9 @@ import { PrismaService } from '../database/database.connection.js';
 import { SystemSettingModule } from '../common/system-setting/system-setting.module.js';
 import { RootSystemSettingController } from './controllers/root.system-setting.controller.js';
 import { RootSystemSettingService } from './services/root.system-setting.service.js';
+import { RootService } from './services/root.service';
+import { RootController } from './controllers/root.controller';
+import { AuditLogModule } from '../common/audit-log/audit-log.module';
 
 @Module({
   imports: [
