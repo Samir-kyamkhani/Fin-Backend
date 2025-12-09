@@ -105,7 +105,7 @@ export class RootAuthService {
     const allowedDomains = whitelist.map((w) => w.domainName).filter(Boolean);
     const allowedIps = whitelist.map((w) => w.serverIp).filter(Boolean);
 
-    if (!this.authUtils.isValidOriginForRoot(origin, allowedDomains)) {
+    if (!this.authUtils.isValidOrigin(origin, allowedDomains)) {
       await this.logAuthEvent({
         performerId: root.id,
         action: 'LOGIN_FAILED',
@@ -116,7 +116,7 @@ export class RootAuthService {
       throw new ForbiddenException('Origin not allowed');
     }
 
-    if (!this.authUtils.isValidIpForRoot(ip, allowedIps)) {
+    if (!this.authUtils.isValidIp(ip, allowedIps)) {
       await this.logAuthEvent({
         performerId: root.id,
         action: 'LOGIN_FAILED',
@@ -237,7 +237,36 @@ export class RootAuthService {
     };
   }
 
-  async requestPasswordReset(dto: ForgotPasswordDto, req?: Request) {
+  async requestPasswordReset(
+    dto: ForgotPasswordDto,
+    currentUser: AuthActor,
+    req?: Request,
+  ) {
+    // 1. Authenticated user ka email verify karo
+    const authenticatedUser = await this.prisma.root.findUnique({
+      where: { id: currentUser.id },
+    });
+
+    if (!authenticatedUser) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    // 2. Verify that the requested email belongs to current user
+    if (authenticatedUser.email !== dto.email) {
+      // Optional: Log failed attempt
+      await this.logAuthEvent({
+        performerId: currentUser.id,
+        action: 'PASSWORD_RESET_REQUEST_FAILED',
+        status: AuditStatus.FAILED,
+        metadata: {
+          details: `Attempted to reset password for email: ${dto.email}`,
+        },
+        req,
+      });
+
+      throw new ForbiddenException('You can only reset your own password');
+    }
+
     const root = await this.prisma.root.findUnique({
       where: { email: dto.email },
     });
@@ -274,7 +303,11 @@ export class RootAuthService {
     return { message: 'If account exists, password reset email sent.' };
   }
 
-  async confirmPasswordReset(dto: ConfirmPasswordResetDto, req?: Request) {
+  async confirmPasswordReset(
+    dto: ConfirmPasswordResetDto,
+    currentUser?: AuthActor,
+    req?: Request,
+  ) {
     const hashedToken = this.authUtils.hashResetToken(dto.token);
 
     const root = await this.prisma.root.findFirst({
@@ -292,6 +325,10 @@ export class RootAuthService {
         req,
       });
       throw new BadRequestException('Invalid or expired token');
+    }
+
+    if (currentUser && root.id !== currentUser.id) {
+      throw new ForbiddenException('You can only reset your own password');
     }
 
     const newPasswordPlain = this.authUtils.generateRandomPassword();

@@ -8,17 +8,17 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { LoginDto } from '../dto/login-auth.dto'
-import { ForgotPasswordDto } from '../dto/forgot-password-auth.dto'
-import { ConfirmPasswordResetDto } from '../dto/confirm-password-reset-auth.dto'
-import { UpdateCredentialsDto } from '../dto/update-credentials-auth.dto'
-import { UpdateProfileDto } from '../dto/update-profile-auth.dto'
-import { PermissionGuard } from '../guards/permission.guard'
-import { RolesGuard } from '../guards/role.guard'
+import { LoginDto } from '../dto/login-auth.dto';
+import { ForgotPasswordDto } from '../dto/forgot-password-auth.dto';
+import { ConfirmPasswordResetDto } from '../dto/confirm-password-reset-auth.dto';
+import { UpdateCredentialsDto } from '../dto/update-credentials-auth.dto';
+import { UpdateProfileDto } from '../dto/update-profile-auth.dto';
+import { PermissionGuard } from '../guards/permission.guard';
+import { RolesGuard } from '../guards/role.guard';
 import type { Request } from 'express';
-import { AuthActor } from '../interface/auth.interface'
-import { EmployeeAuthService } from '../services/employee.auth.service'
-import { JwtAuthGuard } from '../guards/jwt.guard'
+import { AuthActor } from '../interface/auth.interface';
+import { EmployeeAuthService } from '../services/employee.auth.service';
+import { JwtAuthGuard } from '../guards/jwt.guard';
 
 @Controller('/api/v1/employee/auth')
 export class EmployeeAuthController {

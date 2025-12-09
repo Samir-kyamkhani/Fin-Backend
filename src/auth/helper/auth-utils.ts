@@ -15,10 +15,10 @@ import {
   AuthActor,
   JwtPayload,
   PrincipalType,
-} from '../interface/auth.interface'
-import { PermissionService } from '../permission-registry/permission.service'
-import { AuditLogService } from '../../common/audit-log/service/audit-log.service'
-import { AuditStatus } from '../../common/audit-log/enums/audit-log.enum'
+} from '../interface/auth.interface';
+import { PermissionService } from '../permission-registry/permission.service';
+import { AuditLogService } from '../../common/audit-log/service/audit-log.service';
+import { AuditStatus } from '../../common/audit-log/enums/audit-log.enum';
 import { ConfigService } from '@nestjs/config';
 
 @Injectable()
@@ -136,6 +136,11 @@ export class AuthUtilsService {
     return result;
   }
 
+  // Transaction PIN ke liye methods
+  generateRandomTransactionPin(): string {
+    return Math.floor(100000 + Math.random() * 900000).toString();
+  }
+
   hashResetToken(token: string) {
     const secret = this.configService.get<string>('security.authKeySecret');
 
@@ -226,10 +231,10 @@ export class AuthUtilsService {
     return (req.headers['user-agent'] as string) || null;
   }
 
-  isValidOriginForRoot(
+  isValidOrigin(
     origin: string | null,
     allowed: string[],
-    isProd = this.configService.get<string>('isProd.production') ===
+    isProd = this.configService.get<string>('security.production') ===
       'production',
   ): boolean {
     // DEV MODE: Origin null allowed (Postman, Thunder, REST Client)
@@ -293,10 +298,10 @@ export class AuthUtilsService {
     }
   }
 
-  isValidIpForRoot(
+  isValidIp(
     clientIp: string | null,
     allowedIps: string[],
-    isProd = this.configService.get<string>('isProd.production') ===
+    isProd = this.configService.get<string>('security.production') ===
       'production',
   ): boolean {
     if (!clientIp) return false;
@@ -365,4 +370,14 @@ export class AuthUtilsService {
       this.logger.error(`Audit log failure: ${err.message}`);
     }
   }
+
+  // Converts paise(BigInt) -> rupees -> string   (SAFE)
+  money = (value?: bigint | number | null): string => {
+    if (value === null || value === undefined) return '0';
+
+    const num = typeof value === 'bigint' ? Number(value) : value;
+
+    // convert paise → rupees
+    return (num / 100).toString();
+  };
 }

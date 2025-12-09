@@ -77,6 +77,8 @@ model Employee {
   passwordResetToken   String?        @map("password_reset_token") @db.Text
   passwordResetExpires DateTime?      @map("password_reset_expires")
   lastLoginAt          DateTime?      @map("last_login_at")
+  lastLoginIp          String?        @map("last_login_ip_at")
+  lastLoginOrigin      String?        @map("last_login_origin")
   hierarchyLevel       Int            @default(0) @map("hierarchy_level")
   hierarchyPath        String         @map("hierarchy_path")
   deactivationReason   String?        @map("deactivation_reason") @db.Text
@@ -126,13 +128,15 @@ model User {
   emailVerifiedAt               DateTime?  @map("email_verified_at")
   emailVerificationTokenExpires DateTime?  @map("email_verification_token_expires")
   lastLoginAt                   DateTime?  @map("last_login_at")
-  deactivationReason            String?    @map("deactivation_reason") @db.Text
-  customerId                    String     @unique @map("customer_id") @db.VarChar(8)
-  createdAt                     DateTime   @default(now()) @map("created_at")
-  updatedAt                     DateTime   @default(now()) @updatedAt @map("updated_at")
-  deletedAt                     DateTime?  @map("deleted_at")
-  rootParentId                  String     @map("root_parent_id")
-  businessKycId                 String?    @map("business_kyc_id")
+  lastLoginIp                   String?    @map("last_login_ip_at")
+  lastLoginOrigin               String?    @map("last_login_origin")
+  deactivationReason String?   @map("deactivation_reason") @db.Text
+  customerId         String    @unique @map("customer_id") @db.VarChar(8)
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @default(now()) @updatedAt @map("updated_at")
+  deletedAt          DateTime? @map("deleted_at")
+  rootParentId       String    @map("root_parent_id")
+  businessKycId      String?   @map("business_kyc_id")
 
   // Relations
   parent                    User?                   @relation("UserHierarchy", fields: [parentId], references: [id])

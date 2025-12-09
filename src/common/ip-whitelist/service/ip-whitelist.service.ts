@@ -14,7 +14,7 @@ import {
   IpWhitelistCreateRootFields,
   IpWhitelistUpdateUserFields,
   IpWhitelistUpdateRootFields,
-  IpWhitelistRootTypeMap,
+  IpWhitelistTypeMap,
 } from '../types/ip-whitelist.type';
 
 import { CreateUserIpWhitelistDto } from '../dto/create-user-ip-whitelist.dto';
@@ -49,7 +49,7 @@ export class IpWhitelistService {
     return role;
   }
 
-  private mapUser(row: IpWhitelist): IpWhitelistUserType {
+  private mapFullDataUser(row: IpWhitelist): IpWhitelistUserType {
     return {
       id: row.id,
       domainName: row.domainName,
@@ -63,7 +63,17 @@ export class IpWhitelistService {
   private mapRoot(row: {
     domainName: string;
     serverIp: string;
-  }): IpWhitelistRootTypeMap {
+  }): IpWhitelistTypeMap {
+    return {
+      domainName: row.domainName,
+      serverIp: row.serverIp,
+    };
+  }
+
+  private mapUser(row: {
+    domainName: string;
+    serverIp: string;
+  }): IpWhitelistTypeMap {
     return {
       domainName: row.domainName,
       serverIp: row.serverIp,
@@ -134,7 +144,7 @@ export class IpWhitelistService {
         status: AuditStatus.SUCCESS,
       });
 
-      return this.mapUser(created);
+      return this.mapFullDataUser(created);
     } catch (err) {
       throw new InternalServerErrorException(
         err instanceof Error ? err.message : 'Failed to create whitelist',
@@ -223,13 +233,21 @@ export class IpWhitelistService {
     });
   }
 
-  async findUserWhitelist(userId: string): Promise<IpWhitelistUserType> {
-    const row = await this.prisma.ipWhitelist.findFirst({ where: { userId } });
-    if (!row) throw new NotFoundException('User whitelist not found');
-    return this.mapUser(row);
+  async findUserWhitelist(userId: string): Promise<IpWhitelistTypeMap[]> {
+    const row = await this.prisma.ipWhitelist.findMany({
+      where: { userId },
+      select: {
+        domainName: true,
+        serverIp: true,
+      },
+    });
+
+    if (!row.length) throw new NotFoundException('User whitelist not found');
+
+    return row.map((r) => this.mapUser(r));
   }
 
-  async findRootWhitelist(rootId: string): Promise<IpWhitelistRootTypeMap[]> {
+  async findRootWhitelist(rootId: string): Promise<IpWhitelistTypeMap[]> {
     const row = await this.prisma.ipWhitelist.findMany({
       where: { rootId },
       select: {
@@ -285,7 +303,7 @@ export class IpWhitelistService {
       status: AuditStatus.SUCCESS,
     });
 
-    return this.mapUser(updated);
+    return this.mapFullDataUser(updated);
   }
 
   async updateForRoot(

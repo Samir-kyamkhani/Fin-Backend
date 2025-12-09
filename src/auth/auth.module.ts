@@ -3,33 +3,34 @@ import { CacheModule } from '@nestjs/cache-manager';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 
-import { JwtStrategy } from './strategies/jwt.strategy'
+import { JwtStrategy } from './strategies/jwt.strategy';
 
-import { PermissionGuard } from './guards/permission.guard'
-import { RolesGuard } from './guards/role.guard'
+import { PermissionGuard } from './guards/permission.guard';
+import { RolesGuard } from './guards/role.guard';
 
-import { RootAuthService } from './services/root.auth.service'
-import { UserAuthService } from './services/user.auth.service'
-import { EmployeeAuthService } from './services/employee.auth.service'
+import { RootAuthService } from './services/root.auth.service';
+import { UserAuthService } from './services/user.auth.service';
+import { EmployeeAuthService } from './services/employee.auth.service';
 
-import { PrismaService } from '../database/database.connection'
-import { AuthUtilsService } from './helper/auth-utils'
+import { PrismaService } from '../database/database.connection';
+import { AuthUtilsService } from './helper/auth-utils';
 
-import { EmailService } from './email/email.service'
-import { S3Service } from '../utils/s3/s3.service'
+import { EmailService } from './email/email.service';
+import { S3Service } from '../utils/s3/s3.service';
 
-import { IpWhitelistService } from '../common/ip-whitelist/service/ip-whitelist.service'
-import { IpWhitelistModule } from '../common/ip-whitelist/ip-whitelist.module'
+import { IpWhitelistService } from '../common/ip-whitelist/service/ip-whitelist.service';
+import { IpWhitelistModule } from '../common/ip-whitelist/ip-whitelist.module';
 
-import { UtilsModule } from '../utils/utils.module'
-import { AuditLogModule } from '../common/audit-log/audit-log.module'
+import { UtilsModule } from '../utils/utils.module';
+import { AuditLogModule } from '../common/audit-log/audit-log.module';
 
-import { RootAuthController } from './controllers/root.auth.controller'
+import { RootAuthController } from './controllers/root.auth.controller';
 
 import { ConfigService } from '@nestjs/config';
-import { PermissionService } from './permission-registry/permission.service'
-import { IdentityProvider } from './strategies/identity.provider'
-import { AuditLogService } from '../common/audit-log/service/audit-log.service'
+import { PermissionService } from './permission-registry/permission.service';
+import { IdentityProvider } from './strategies/identity.provider';
+import { AuditLogService } from '../common/audit-log/service/audit-log.service';
+import { UserAuthController } from './controllers/user.auth.controller';
 
 @Module({
   imports: [
@@ -79,7 +80,7 @@ import { AuditLogService } from '../common/audit-log/service/audit-log.service'
     AuditLogService,
   ],
 
-  controllers: [RootAuthController],
+  controllers: [RootAuthController, UserAuthController],
 
   exports: [
     RootAuthService,

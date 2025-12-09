@@ -36,6 +36,7 @@ import { JwtAuthGuard } from '../guards/jwt.guard';
 
 import type { AuthActor } from '../interface/auth.interface';
 import { RootAuthService } from '../services/root.auth.service';
+import { CurrentUser } from '../decorators/current-user.decorator';
 
 interface AuthTokens {
   accessToken: string;
@@ -138,87 +139,85 @@ export class RootAuthController {
   @HttpCode(HttpStatus.NO_CONTENT)
   async logout(
     @Req() req: Request,
+    @CurrentUser() user: AuthActor,
     @Res({ passthrough: true }) res: Response,
   ): Promise<void> {
-    const actor = req.user as AuthActor | undefined;
-
-    if (!actor) {
+    if (!user) {
       throw new UnauthorizedException();
     }
 
     this.clearAuthCookies(res);
 
-    await this.authService.logout(actor.id, req);
+    await this.authService.logout(user.id, req);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Post('request-password-reset')
   @HttpCode(HttpStatus.ACCEPTED)
   async requestPasswordReset(
+    @CurrentUser() user: AuthActor,
     @Body() dto: ForgotPasswordDto,
   ): Promise<{ success: true; message: string }> {
-    const result = await this.authService.requestPasswordReset(dto);
+    const result = await this.authService.requestPasswordReset(dto, user);
     return { success: true, message: result.message };
   }
 
+  @UseGuards(JwtAuthGuard)
   @Post('confirm-password-reset')
   @HttpCode(HttpStatus.OK)
   async confirmPasswordReset(
+    @CurrentUser() user: AuthActor,
     @Body() dto: ConfirmPasswordResetDto,
   ): Promise<{ success: true; message: string }> {
-    const result = await this.authService.confirmPasswordReset(dto);
+    const result = await this.authService.confirmPasswordReset(dto, user);
     return { success: true, message: result.message };
   }
 
   @UseGuards(JwtAuthGuard)
   @Get('me')
-  async getMe(@Req() req: Request) {
-    const actor = req.user as AuthActor | undefined;
-
-    if (!actor) {
+  async getMe(@CurrentUser() user: AuthActor) {
+    if (!user) {
       throw new UnauthorizedException();
     }
 
-    return this.authService.getCurrentUser(actor.id);
+    return this.authService.getCurrentUser(user.id);
   }
 
   @UseGuards(JwtAuthGuard, PermissionGuard, RolesGuard)
   @Roles('ROOT')
   @Get('dashboard')
-  async getDashboard(@Req() req: Request) {
-    const actor = req.user as AuthActor | undefined;
-
-    if (!actor) {
+  async getDashboard(@CurrentUser() user: AuthActor) {
+    if (!user) {
       throw new UnauthorizedException();
     }
 
-    return this.authService.getDashboard(actor.id);
+    return this.authService.getDashboard(user.id);
   }
 
   @UseGuards(JwtAuthGuard)
   @Patch('credentials')
   async updateCredentials(
-    @Req() req: Request,
+    @CurrentUser() user: AuthActor,
     @Body() dto: UpdateCredentialsDto,
   ) {
-    const actor = req.user as AuthActor | undefined;
-
-    if (!actor) {
+    if (!user) {
       throw new UnauthorizedException();
     }
 
-    return this.authService.updateCredentials(actor.id, dto);
+    return this.authService.updateCredentials(user.id, dto);
   }
 
   @UseGuards(JwtAuthGuard)
   @Patch('profile')
-  async updateProfile(@Req() req: Request, @Body() dto: UpdateProfileDto) {
-    const actor = req.user as AuthActor | undefined;
-
-    if (!actor) {
+  async updateProfile(
+    @CurrentUser() user: AuthActor,
+    @Body() dto: UpdateProfileDto,
+  ) {
+    if (!user) {
       throw new UnauthorizedException();
     }
 
-    return this.authService.updateProfile(actor.id, dto);
+    return this.authService.updateProfile(user.id, dto);
   }
 
   @UseGuards(JwtAuthGuard)
@@ -226,6 +225,7 @@ export class RootAuthController {
   @UseInterceptors(FileInterceptor('profileImage'))
   async updateProfileImage(
     @Req() req: Request,
+    @CurrentUser() user: AuthActor,
     @UploadedFile(
       new ParseFilePipe({
         validators: [
@@ -240,9 +240,7 @@ export class RootAuthController {
     )
     file: Express.Multer.File,
   ) {
-    const actor = req.user as AuthActor | undefined;
-
-    if (!actor) {
+    if (!user) {
       throw new UnauthorizedException();
     }
 
@@ -250,6 +248,6 @@ export class RootAuthController {
       throw new BadRequestException('profileImage file is required');
     }
 
-    return this.authService.updateProfileImage(actor.id, file, req);
+    return this.authService.updateProfileImage(user.id, file, req);
   }
 }
